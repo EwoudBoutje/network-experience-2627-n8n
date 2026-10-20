@@ -1,0 +1,301 @@
+Hiermee zet je **n8n vanaf nul op een Debian-VM in Proxmox**, bereikbaar vanaf je laptop. Dit is de basis waarop je later de Minecraft-manager aansluit.
+
+Gebruik een **Debian 12- of 13-VM** met internettoegang en een gebruiker met `sudo`-rechten. Voer alle terminalopdrachten uit **binnen die VM**.
+
+**1. Controleer of Docker al geïnstalleerd is**
+
+```bash
+docker --version
+sudo docker compose version
+```
+
+Werken beide opdrachten? Ga verder naar **stap 3**. Op jouw huidige VM is Docker al geïnstalleerd.
+
+**2. Installeer Docker en Docker Compose**
+
+Op een nieuwe Debian-installatie voeg je eerst de officiële Docker-pakketbron toe:
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl nano openssl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg \
+  -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+Voeg daarna de repository toe. Plak het volledige blok:
+
+```bash
+sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+```
+
+Installeer en start Docker:
+
+```bash
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+```
+
+Controleer de installatie:
+
+```bash
+sudo docker run --rm hello-world
+sudo docker compose version
+```
+
+Bij succes verschijnt onder andere `Hello from Docker!`. Dit volgt de officiële Docker-installatiemethode voor Debian. [Docker Docs](https://docs.docker.com/engine/install/debian/?utm_source=chatgpt.com)
+
+We blijven `sudo docker ...` gebruiken, zodat je geen extra groepsrechten hoeft in te stellen.
+
+**3. Zoek het IP-adres van je VM**
+
+```bash
+hostname -I
+```
+
+Noteer het **LAN-adres van je Debian-VM**, bijvoorbeeld:
+
+```text
+10.20.203.50
+```
+
+Gebruik het adres waarop je laptop de VM kan bereiken. Docker-adressen zoals `172.17.0.1` zijn hiervoor doorgaans niet de juiste keuze.
+
+Geef de VM bij voorkeur een vast IP of DHCP-reservering, zodat de n8n-link niet verandert.
+
+**4. Maak de projectmap**
+
+```bash
+mkdir -p ~/Projects/n8n
+cd ~/Projects/n8n
+```
+
+Je maakt twee bestanden:
+
+| Bestand | Functie |
+|---|---|
+| `.env` | IP-adres, poort en encryptiesleutel |
+| `compose.yaml` | Beschrijft hoe Docker n8n start |
+
+**5. Maak `.env`**
+
+Genereer eerst een encryptiesleutel:
+
+```bash
+openssl rand -hex 32
+```
+
+Bewaar de uitvoer. n8n gebruikt deze sleutel om opgeslagen credentials te versleutelen.
+
+Open het configuratiebestand:
+
+```bash
+nano .env
+```
+
+Plak:
+
+```dotenv
+N8N_HOST=10.20.203.50
+N8N_PUBLIC_PORT=5678
+N8N_VERSION=2.43.6
+N8N_ENCRYPTION_KEY=PLAK_HIER_JE_GEGENEREERDE_SLEUTEL
+```
+
+Pas aan:
+
+- `N8N_HOST`: het echte LAN-IP van jouw Debian-VM.
+- `N8N_ENCRYPTION_KEY`: de uitvoer van `openssl`.
+- `N8N_PUBLIC_PORT`: gebruik bijvoorbeeld `5679` als een bestaande installatie poort `5678` al gebruikt.
+
+Sla op met **Ctrl+O → Enter → Ctrl+X**.
+
+Bescherm het bestand:
+
+```bash
+chmod 600 .env
+```
+
+**Bewaar deze encryptiesleutel en verander hem niet zomaar nadat je credentials hebt opgeslagen.**
+
+**6. Bouw `compose.yaml`**
+
+```bash
+nano compose.yaml
+```
+
+Plak de volledige configuratie:
+
+```yaml
+name: n8n-base
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    restart: unless-stopped
+
+    ports:
+      - "${N8N_HOST}:${N8N_PUBLIC_PORT}:5678"
+
+    environment:
+      TZ: Europe/Brussels
+      GENERIC_TIMEZONE: Europe/Brussels
+
+      N8N_HOST: "${N8N_HOST}"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+
+      N8N_EDITOR_BASE_URL: "http://${N8N_HOST}:${N8N_PUBLIC_PORT}"
+      N8N_WEBHOOK_URL: "http://${N8N_HOST}:${N8N_PUBLIC_PORT}/"
+
+      N8N_ENCRYPTION_KEY: "${N8N_ENCRYPTION_KEY:?Vul de encryptiesleutel in}"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+
+      # Voor deze lokale installatie via HTTP.
+      N8N_SECURE_COOKIE: "false"
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+    networks:
+      - automation
+
+volumes:
+  n8n_data:
+
+networks:
+  automation:
+    name: n8n-automation
+    driver: bridge
+```
+
+Sla opnieuw op.
+
+Dit doet de configuratie:
+
+| Onderdeel | Betekenis |
+|---|---|
+| `image` | Gebruikt een vaste n8n-versie |
+| `restart: unless-stopped` | Start n8n opnieuw na een crash of VM-herstart, tenzij je hem zelf stopte |
+| `ports` | Maakt n8n bereikbaar op het VM-adres |
+| `N8N_EDITOR_BASE_URL` | Het adres waarmee je de editor opent |
+| `N8N_WEBHOOK_URL` | Het basisadres voor onder andere chatlinks |
+| `n8n_data` | Bewaart workflows, credentials en instellingen |
+| `n8n-automation` | Docker-netwerk waaraan je later MCP kunt koppelen |
+
+Deze basisinstallatie gebruikt SQLite, opgeslagen in het volume. Een aparte PostgreSQL-container is hiervoor niet nodig. [docs.n8n.io](https://docs.n8n.io/hosting/installation/docker/?utm_source=chatgpt.com)
+
+**De HTTP-instelling is bedoeld voor je vertrouwde lokale netwerk.** Voor toegang via internet moet je eerst HTTPS en passende toegangsbeveiliging instellen.
+
+**7. Controleer en start de configuratie**
+
+Voer dit uit vanuit `~/Projects/n8n`:
+
+```bash
+sudo docker compose config --quiet
+```
+
+Geen uitvoer betekent dat Compose de configuratie kan verwerken.
+
+Download en start vervolgens n8n:
+
+```bash
+sudo docker compose pull
+sudo docker compose up -d
+```
+
+Controleer:
+
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=50 n8n
+```
+
+Bij `docker compose ps` hoort de service `n8n` de status **Up** te hebben.
+
+**8. Open n8n vanaf je laptop**
+
+Open in je browser:
+
+```text
+http://IP-VAN-JE-DEBIAN-VM:5678
+```
+
+Met het voorbeeldadres:
+
+```text
+http://10.20.203.50:5678
+```
+
+Gebruik de poort uit `.env` als je een andere koos.
+
+Maak bij het eerste bezoek je **n8n-owneraccount** aan met je naam, e-mailadres en wachtwoord.
+
+Gebruik op je laptop het VM-IP; `localhost` verwijst daar naar de laptop zelf.
+
+**9. Test of workflows werken**
+
+Maak een eenvoudige workflow:
+
+1. Klik op **Create Workflow**.
+2. Voeg een **Manual Trigger** toe.
+3. Voeg een **Edit Fields**-node toe.
+4. Maak daarin een tekstveld:
+   - **Name:** `bericht`
+   - **Value:** `n8n werkt`
+5. Verbind beide nodes.
+6. Klik op **Execute Workflow**.
+
+De uitvoer hoort te zijn:
+
+```json
+{
+  "bericht": "n8n werkt"
+}
+```
+
+Sla de workflow op.
+
+**10. Controleer of je gegevens bewaard blijven**
+
+Herstart n8n:
+
+```bash
+sudo docker compose restart n8n
+```
+
+Vernieuw de browser. Je account en opgeslagen workflow moeten nog aanwezig zijn.
+
+Gebruik voor dagelijks beheer:
+
+| Actie | Opdracht |
+|---|---|
+| Status bekijken | `sudo docker compose ps` |
+| Logs bekijken | `sudo docker compose logs --tail=50 n8n` |
+| Stoppen | `sudo docker compose stop` |
+| Weer starten | `sudo docker compose up -d` |
+| Configuratiewijzigingen toepassen | `sudo docker compose up -d` |
+
+Gebruik **geen `docker compose down -v`** als je de opgeslagen gegevens wilt behouden: `-v` verwijdert ook het volume.
+
+**11. Los eventuele verbindingsproblemen op**
+
+| Probleem | Controle |
+|---|---|
+| `permission denied` bij Docker | Gebruik `sudo` |
+| `port is already allocated` | Kies een vrije `N8N_PUBLIC_PORT` in `.env` en voer opnieuw `up -d` uit |
+| `cannot assign requested address` | `N8N_HOST` moet een IP zijn dat daadwerkelijk op deze VM staat |
+| Container blijft herstarten | Bekijk `sudo docker compose logs --tail=100 n8n` |
+| n8n werkt op de VM, niet op je laptop | Controleer het VM-IP, de netwerkroute en eventuele Proxmox-firewall; laat de gekozen TCP-poort vanaf je laptopnetwerk toe |
+| Chatlinks verwijzen naar localhost | Controleer de URL-instellingen en pas ze toe met `sudo docker compose up -d` |
+
+**Hierna is de basis klaar voor de Minecraft-manager.** Installeer vervolgens alleen de MCP-service naast deze n8n-installatie en verbind die met het netwerk `n8n-automation`. Je hoeft daarvoor geen tweede n8n-container aan te maken.
