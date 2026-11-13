@@ -148,7 +148,11 @@ nano .env
 
 Vul de nodige waarden in.
 
-**Belangrijk:** gebruik eigen wachtwoorden, tokens en encryption keys. Deel je `.env`-bestand nooit via GitHub.
+**Belangrijk:**
+
+- Gebruik eigen wachtwoorden, tokens en encryption keys.
+- Deel je `.env`-bestand nooit via GitHub.
+- Gebruik niet zomaar de voorbeeldwaarden voor een echte installatie.
 
 ### 4. De centrale omgeving starten
 
@@ -196,37 +200,68 @@ Om een workflow te importeren:
 6. Stel de vereiste credentials in.
 7. Test de workflow voordat je deze activeert.
 
-De workflowbestanden zijn exports. Ze bevatten niet automatisch alle benodigde API-credentials of externe configuratie.
+De workflowbestanden zijn exports. Ze bevatten niet automatisch alle benodigde API-credentials, externe configuratie of actieve verbindingen.
+
+Een geïmporteerde workflow moet dus eerst gecontroleerd en geconfigureerd worden.
 
 ## Configuratie en IP-adressen
 
 Sommige workflows moeten verbinding maken met diensten op een ander systeem.
 
-De IP-adressen en URL's kunnen verschillen per installatie. Controleer daarom de configuratie voordat je een workflow uitvoert.
+IP-adressen en URL's kunnen verschillen per installatie. Daarom zijn enkele adressen in de Minecraft-workflow vervangen door placeholders.
 
-**Vervang alle voorbeeldwaarden door de adressen van je eigen omgeving.**
+Vervang deze placeholders door de adressen van je eigen omgeving.
 
-Voorbeelden van configuratie die gecontroleerd moet worden:
-
-| Dienst | Wat moet je aanpassen? |
+| Placeholder | Betekenis |
 |---|---|
-| Pterodactyl | IP-adres of hostname van de Pterodactyl-server |
-| n8n Webhooks | Het adres waarop n8n bereikbaar is |
-| Minecraft MCP | Docker-servicenaam en MCP-poort indien de netwerkconfiguratie verschilt |
-| Proxmox MCP | Docker-servicenaam en MCP-poort indien de netwerkconfiguratie verschilt |
+| `PTERODACTYL_HOST` | Hostname of IP-adres van de Pterodactyl-server |
+| `N8N_HOST` | Hostname of IP-adres waarop n8n bereikbaar is |
 
 ### Waar moet je dit aanpassen?
 
-Na het importeren van een workflow:
+Open na het importeren de workflow **Minecraft Whitelist**.
 
-1. Open de workflow.
-2. Zoek de betreffende HTTP Request- of MCP Client-node.
-3. Controleer de URL of endpoint.
-4. Vervang de placeholder door het adres van je eigen omgeving.
-5. Sla de workflow op.
-6. Test de verbinding.
+Zoek de betreffende HTTP Request- en URL-configuraties en vervang:
 
-De exacte nodes en waarden worden beschreven in de README van elk onderdeel.
+```text
+http://PTERODACTYL_HOST
+```
+
+door bijvoorbeeld:
+
+```text
+http://192.168.1.100
+```
+
+Vervang ook:
+
+```text
+http://N8N_HOST:5678
+```
+
+door bijvoorbeeld:
+
+```text
+http://192.168.1.50:5678
+```
+
+Gebruik uiteraard de adressen van je eigen omgeving.
+
+**Let op:** vervang alleen de hostname of het IP-adres. De bestaande `http://` en eventuele poort moeten behouden blijven.
+
+Controleer daarnaast de MCP-endpoints. De standaard Minecraft MCP-configuratie gebruikt:
+
+```text
+http://minecraft-mcp:8000
+```
+
+De Proxmox MCP-configuratie gebruikt:
+
+```text
+http://proxmox-mcp:8000/mcp
+```
+
+Deze Docker-servicenamen werken alleen wanneer de betrokken containers op een gedeeld Docker-netwerk zitten.
 
 ## Credentials en beveiliging
 
@@ -250,7 +285,7 @@ Elk onderdeel heeft een eigen README met de specifieke installatie- en configura
 
 ### Minecraft Dashboard
 
-[**Minecraft Dashboard – README.md**](Minecraft_dashboard/README.md)
+[Minecraft Dashboard – README.md](Minecraft_dashboard/README.md)
 
 Bevat onder andere:
 
@@ -261,9 +296,25 @@ Bevat onder andere:
 - Minecraft Whitelist-database en SQL-schema.
 - Testen van de workflow.
 
+De SQL-configuratie staat in:
+
+```text
+minecraft-whitelist-schema.sql
+```
+
+Controleer vóór het uitvoeren van dit bestand of de juiste database en databasegebruiker bestaan.
+
+De Minecraft MCP-server staat in:
+
+```text
+Minecraft_dashboard/minecraft-mcp/
+```
+
+De MCP-server moet bereikbaar zijn vanuit n8n. Zorg daarom dat beide containers op een gedeeld Docker-netwerk zitten.
+
 ### Trello
 
-[**Trello – README.md**](Trello/README.md)
+[Trello – README.md](Trello/README.md)
 
 Bevat onder andere:
 
@@ -273,9 +324,11 @@ Bevat onder andere:
 - GitHub MCP-configuratie.
 - Testen van de AI-agent.
 
+De workflow gebruikt externe MCP-integraties. Controleer of deze servers beschikbaar zijn en of de juiste credentials gekoppeld zijn.
+
 ### Proxmox Agent Dashboard
 
-[**Proxmox Agent Dashboard – README.md**](Proxmox_agent_dashboard/README.md)
+[Proxmox Agent Dashboard – README.md](Proxmox_agent_dashboard/README.md)
 
 Bevat onder andere:
 
@@ -286,11 +339,17 @@ Bevat onder andere:
 - Basic Authentication.
 - Testen van de VM-informatie.
 
+De Proxmox MCP-server moet bereikbaar zijn vanuit n8n. De standaardconfiguratie gebruikt het endpoint:
+
+```text
+http://proxmox-mcp:8000/mcp
+```
+
 ### Proxmox MCP Workshop
 
 De afzonderlijke workshopstappen vind je in:
 
-[**Workshop Proxmox Agent**](workshop-proxmox-agent/)
+[Workshop Proxmox Agent](workshop-proxmox-agent/)
 
 Deze map bevat de installatie- en configuratiestappen van de Proxmox Agent.
 
@@ -344,8 +403,10 @@ Bewaar back-ups op een veilige locatie en controleer of ze effectief teruggezet 
 - De Proxmox MCP-server moet bereikbaar zijn vanuit n8n.
 - De Trello- en Proxmox-workflows moeten eerst getest worden voordat ze geactiveerd worden.
 - Een succesvolle Docker-start betekent niet automatisch dat alle workflows correct werken.
+- Controleer na het importeren of alle gebruikte MCP-servers beschikbaar zijn.
 
 ---
 
-**Repository:**  
+**Repository:**
+
 https://github.com/EwoudBoutje/network-experience-2627-n8n
