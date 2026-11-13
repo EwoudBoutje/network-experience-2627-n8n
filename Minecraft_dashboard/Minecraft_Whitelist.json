@@ -1,0 +1,1857 @@
+{
+  "name": "Minecraft Whitelist Links",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -3072,
+        32
+      ],
+      "id": "d4e418d3-ceee-4f4c-b7d2-53fa4e2c8fac",
+      "name": "When chat message received",
+      "webhookId": "9f99a81d-76b2-4e73-b130-c79a831dc5c6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=   {{ $json.chatInput || $json.body.message }}",
+        "options": {
+          "systemMessage": "Je bent de beheerder-assistent van een Minecraft-server. Je voert opdrachten\nuit via de tools minecraft_command en minecraft_log en antwoordt in het Nederlands.\n\nTOOLS\n- minecraft_command: stuurt één console-commando naar de server, zonder slash.\n  Deze tool geeft zelf GEEN antwoord terug, alleen een lege bevestiging.\n- minecraft_log: leest het serverlog. Hier staat het echte antwoord van de server.\n- mc_commands: lijst met alle commando's en de juiste syntax.\n\nWERKWIJZE\n1. Vertaal het verzoek naar een command dat past bij de geïnstalleerde\n   Minecraft-versie en plugins. Verzin geen commands, argumenten,\n   spelersnamen of resultaten.\n2. Weet je niet zeker welk command past, gebruik dan eerst mc_commands.\n   Blijf je twijfelen, vraag om verduidelijking.\n3. Stuur precies één command per toolaanroep, zonder slash.\n   Bij meerdere opdrachten: voer ze afzonderlijk en achtereenvolgens uit.\n4. Roep minecraft_command en minecraft_log nooit tegelijk aan, maar altijd\n   na elkaar: eerst het command, daarna pas het log.\n5. Heb je het resultaat van een command nodig (list, whitelist list, tps,\n   seen, banlist, enz.), lees dan daarna minecraft_log en zoek de laatste\n   regels onderaan. Staat het antwoord er nog niet, lees het log dan één\n   keer opnieuw voordat je zegt dat je het niet weet.\n6. Controleer iedere serverrespons voordat je verdergaat. Stop bij een fout\n   of onbekende uitvoeringsstatus en meld dat aan de gebruiker.\n7. Herhaal commando's niet automatisch.\n\nSPELERSNAMEN\nAls de gebruiker een naam noemt voor een actie (kill, kick, ban, tp, gamemode, enz.):\n- Gebruik eerst minecraft:list en lees het log om te zien wie online is.\n- Staat de speler daar niet bij, controleer dan met whitelist list.\n- Corrigeer typfouten of hoofdletters naar de echte spelersnaam, zodat de\n  gebruiker zich geen zorgen hoeft te maken over spelfouten.\n- Is er geen duidelijke match, vraag dan welke speler bedoeld wordt.\n  Raad nooit een naam.\n\nVEILIGHEID\nVoer deze commando's alleen uit als de gebruiker er expliciet om vraagt:\nstop, ban, op, deop, kickall, whitelist off, rechtenwijzigingen (lp).\nBELANGRIJK: voer nooit IP-bans uit (geen ban-ip), ook niet als erom gevraagd wordt.\n\nANTWOORD\nGeef na afloop een korte, duidelijke samenvatting van wat de server teruggaf,\nbijvoorbeeld de lijst met spelers. Meld nooit dat je iets niet hebt zonder\neerst het log gelezen te hebben."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2656,
+        16
+      ],
+      "id": "ecc84bb6-fbec-496c-99d1-5ffd05951747",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-27b",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-27b"
+        },
+        "builtInTools": {
+          "webSearch": {
+            "searchContextSize": "medium"
+          }
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2848,
+        256
+      ],
+      "id": "865d2214-6ea7-43bb-b8f5-740b4d5d8992",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zr4WedfNzsZ4SHIx",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=dashboard\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -2720,
+        256
+      ],
+      "id": "c0288b3c-7be8-4df6-bff7-5d612397ef56",
+      "name": "Simple Memory2"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Serverbeheer</title>\n<style>\n:root{--bg:#e8e5dc;--panel:#f6f4ee;--ink:#1d2822;--mute:#5d6b62;--line:#cdc8ba;--accent:#3f7d3a;--accent-ink:#fff;--warn:#b3402f;--you:#1d2822;--you-ink:#f6f4ee}\n@media(prefers-color-scheme:dark){:root{--bg:#161d19;--panel:#1f2924;--ink:#e6ede7;--mute:#92a398;--line:#33413a;--accent:#6bb35f;--accent-ink:#10170f;--warn:#e27a68;--you:#e6ede7;--you-ink:#161d19}}\n*{box-sizing:border-box}\nhtml,body{height:100%;margin:0}\nbody{background:var(--bg);color:var(--ink);font:16px/1.5 \"Segoe UI\",system-ui,sans-serif}\n.app{max-width:1000px;height:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 260px;grid-template-rows:auto minmax(0,1fr);gap:12px}\nheader{grid-column:1/-1;display:flex;align-items:center;gap:10px}\nh1{font-size:1.25rem;margin:0}\nh2{font-size:.95rem;margin:0 0 8px}\n.dot{width:12px;height:12px;border-radius:2px;background:var(--mute)}\n.dot.running{background:var(--accent)}\n.dot.offline{background:var(--warn)}\n.dot.starting,.dot.stopping{background:#d6a02c}\n#state{color:var(--mute)}\n.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-height:0}\n.chat{display:flex;flex-direction:column}\n#log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:8px}\n.msg{max-width:85%;padding:8px 12px;border-radius:6px;white-space:pre-wrap;word-break:break-word}\n.you{align-self:flex-end;background:var(--you);color:var(--you-ink)}\n.bot{align-self:flex-start;border:1px solid var(--line);font-family:Consolas,\"Courier New\",monospace;font-size:.92rem}\n.bot.wait{color:var(--mute)}\n.bot.err{color:var(--warn);border-color:var(--warn)}\nform{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:10px}\ninput{flex:1;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}\nbutton{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 16px;cursor:pointer}\nbutton:disabled{opacity:.5;cursor:wait}\n:focus-visible{outline:2px solid var(--accent);outline-offset:2px}\nul{list-style:none;margin:0;padding:0}\nli{padding:4px 0;border-bottom:1px solid var(--line)}\nli:last-child{border:0}\n.mute{color:var(--mute)}\n@media(max-width:720px){.app{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr)}}\n</style>\n</head>\n<body>\n<div class=\"app\">\n<header><span id=\"dot\" class=\"dot\"></span><h1>Minecraft-server</h1><span id=\"state\">Status ophalen...</span></header>\n<section class=\"panel chat\" aria-label=\"Chat met de agent\">\n<div id=\"log\" aria-live=\"polite\"></div>\n<form id=\"f\"><input id=\"t\" autocomplete=\"off\" placeholder=\"Typ een opdracht, bv. whitelist jason\" aria-label=\"Opdracht\"><button id=\"b\">Verstuur</button></form>\n</section>\n<aside class=\"panel\" aria-label=\"Spelers online\">\n<h2 id=\"who\">Spelers online</h2>\n<ul id=\"players\"></ul>\n<p class=\"mute\" id=\"upd\"></p>\n</aside>\n</div>\n<script>\nvar $ = function (id) { return document.getElementById(id); };\nvar sid = 's' + Date.now() + Math.random().toString(36).slice(2);\nvar NAMES = { running: 'Server draait', offline: 'Server is offline', starting: 'Server start op', stopping: 'Server stopt' };\n\nfunction loadStatus() {\n  fetch('mc-status', { cache: 'no-store' })\n    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })\n    .then(function (d) {\n      $('dot').className = 'dot ' + d.status;\n      $('state').textContent = NAMES[d.status] || d.status;\n      $('who').textContent = 'Spelers online' + (d.max ? ' (' + d.count + '/' + d.max + ')' : '');\n      var ul = $('players');\n      ul.textContent = '';\n      if (!d.players || !d.players.length) {\n        var e = document.createElement('li');\n        e.className = 'mute';\n        e.textContent = d.status === 'running' ? 'Niemand online' : 'Server draait niet';\n        ul.appendChild(e);\n      } else {\n        d.players.forEach(function (p) {\n          var li = document.createElement('li');\n          li.textContent = p;\n          ul.appendChild(li);\n        });\n      }\n      $('upd').textContent = 'Bijgewerkt om ' + new Date().toLocaleTimeString('nl-BE');\n    })\n    .catch(function () {\n      $('dot').className = 'dot';\n      $('state').textContent = 'Geen verbinding met n8n';\n    });\n}\n\nfunction add(cls, text) {\n  var m = document.createElement('div');\n  m.className = 'msg ' + cls;\n  m.textContent = text;\n  $('log').appendChild(m);\n  $('log').scrollTop = $('log').scrollHeight;\n  return m;\n}\n\nfunction busy(on) { $('b').disabled = on; $('t').disabled = on; if (!on) $('t').focus(); }\n\n$('f').addEventListener('submit', function (ev) {\n  ev.preventDefault();\n  var text = $('t').value.trim();\n  if (!text) return;\n  $('t').value = '';\n  add('you', text);\n  var pending = add('bot wait', 'Bezig, het model kan even duren...');\n  busy(true);\n  var ctl = new AbortController();\n  var timer = setTimeout(function () { ctl.abort(); }, 180000);\n  fetch('mc-chat', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ message: text, sessionId: sid }),\n    signal: ctl.signal\n  })\n    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })\n    .then(function (d) { pending.className = 'msg bot'; pending.textContent = d.output || '(leeg antwoord)'; })\n    .catch(function (e) {\n      pending.className = 'msg bot err';\n      pending.textContent = 'Mislukt: ' + (e.name === 'AbortError' ? 'geen antwoord binnen 3 minuten' : e.message);\n    })\n    .then(function () { clearTimeout(timer); busy(false); loadStatus(); });\n});\n\nloadStatus();\nsetInterval(function () { if (!document.hidden) loadStatus(); }, 30000);\n</script>\n</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2848,
+        672
+      ],
+      "id": "062939eb-5cd0-4da2-a1cb-fd1961de0ebb",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "path": "dashboard",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3072,
+        672
+      ],
+      "id": "f429addd-e13c-47c9-85c3-f3a466914040",
+      "name": "Webhook",
+      "webhookId": "8c3d4e38-4dcb-41a7-a4c2-a2e277c2fe10",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "mc-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3072,
+        448
+      ],
+      "id": "c4b2392a-a969-4e83-883c-d73bc07aa001",
+      "name": "Webhook status",
+      "webhookId": "bdca59ec-e402-4ecd-93dd-f3ec527af725"
+    },
+    {
+      "parameters": {
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/resources",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2848,
+        448
+      ],
+      "id": "2ee553e3-8c09-42c2-83d3-d5d2581a6a1c",
+      "name": "Resources",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"command\": \"minecraft:list\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2624,
+        448
+      ],
+      "id": "753848f2-5a19-4129-bf89-6c71a1441c67",
+      "name": "List",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2400,
+        448
+      ],
+      "id": "ea5fe7d2-91d8-49b4-8780-9d0f5908c1fa",
+      "name": "Wait",
+      "webhookId": "5eb4be00-c34b-4be5-b0e7-5a58012f77b3"
+    },
+    {
+      "parameters": {
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2176,
+        448
+      ],
+      "id": "058798f6-661a-43a2-8b6f-10d4ffb9d6ff",
+      "name": "Log",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $('Resources').first().json;\nconst state = res?.attributes?.current_state || 'offline';\nconst log = String($input.first().json.data ?? '');\nconst lines = log.split('\\n').filter(l => l.includes('players online'));\nconst last = lines.length ? lines[lines.length - 1].trim() : '';\nconst m = last.match(/There are (\\d+) of a max of (\\d+) players online:\\s*(.*)$/);\nconst players = (state === 'running' && m && m[3].trim())\n  ? m[3].split(',').map(s => s.trim()).filter(Boolean) : [];\nreturn [{ json: { status: state, count: m ? Number(m[1]) : 0, max: m ? Number(m[2]) : null, players } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1952,
+        448
+      ],
+      "id": "5e93b7d0-9316-4881-a07a-0c44dc6fd71b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1728,
+        448
+      ],
+      "id": "980407bd-937b-4f4d-adba-3c7e25226b95",
+      "name": "Respond status"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mc-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3072,
+        224
+      ],
+      "id": "d29f5be9-0365-4000-8cb4-68904a962b65",
+      "name": "Webhook chat",
+      "webhookId": "10bf4be9-4a18-4d16-a951-0b59e63d643b"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2192,
+        16
+      ],
+      "id": "668503d7-8772-49a2-9e0a-ab0925348654",
+      "name": "Respond chat"
+    },
+    {
+      "parameters": {
+        "description": "Geeft de lijst van alle Minecraft-servercommando's met de juiste syntax. Gebruik dit eerst als je niet zeker weet welk command past bij een verzoek.",
+        "jsCode": "return `MINECRAFT-COMMANDO'S VOOR DE CONSOLE (zonder slash typen, steeds exact een command per tool-aanroep)\n\nREGELS\n- Gebruik altijd een echte spelersnaam. @a werkt, @p en @s werken niet vanuit de console.\n- Commando's die jouw positie nodig hebben, kun je omzetten met: execute as <speler> at <speler> run <command>\n- Gebruik voor vanilla commando's zo nodig het voorvoegsel minecraft: (bv. minecraft:list), omdat Essentials sommige namen overneemt.\n- GEVAARLIJK (alleen uitvoeren als de gebruiker er expliciet om vraagt): stop, ban, ban-ip, op, deop, kickall, whitelist off, whitelist reload, lp ... permission set, lp ... parent add, rg remove, worldborder set, execute, kill @a, clear <speler>, fill, setblock, difficulty, gamerule.\n\nSPELERS EN TOEGANG\nwhitelist add <speler> | whitelist remove <speler> | whitelist list | whitelist on | whitelist off\nop <speler> | deop <speler>\nkick <speler> [reden] | ban <speler> [reden] | pardon <speler> | ban-ip <ip> | pardon-ip <ip> | banlist\nlist | seed | difficulty peaceful|easy|normal|hard | defaultgamemode survival|creative\n\nBERICHTEN\nsay <bericht> | msg <speler> <bericht> | tell <speler> <bericht> | me <tekst>\ntellraw <speler> {\"text\":\"hallo\"} | title <speler> title {\"text\":\"Hallo\"} | title <speler> subtitle {\"text\":\"tekst\"} | title <speler> actionbar {\"text\":\"tekst\"}\nEssentials: broadcast <bericht> | mail send <speler> <bericht>\n\nSPELER AANPASSEN\ngamemode survival|creative|adventure|spectator <speler>\ntp <speler> <andere speler> | tp <speler> <x> <y> <z>\ngive <speler> <item> [aantal]   (bv. give Jan minecraft:diamond 5)\nclear <speler> [item] | kill <speler> | damage <speler> <hoeveelheid>\neffect give <speler> <effect> [seconden] [niveau] | effect clear <speler>\nexperience add <speler> <aantal> points|levels | experience set <speler> <aantal> levels\nenchant <speler> <enchantment> [niveau] | spawnpoint <speler> <x> <y> <z>\nadvancement grant|revoke <speler> everything\nattribute <speler> minecraft:generic.max_health base set <waarde>\n\nWERELD\ntime set day|noon|night|midnight|<ticks> | time add <ticks> | time query daytime\nweather clear|rain|thunder [seconden]\ngamerule <regel> <waarde>   (bv. gamerule keepInventory true, doDaylightCycle false, mobGriefing false)\nsetworldspawn <x> <y> <z> | worldborder set <grootte> [seconden] | worldborder center <x> <z> | worldborder get\nsummon <entiteit> <x> <y> <z> | setblock <x> <y> <z> <blok> | fill <x1> <y1> <z1> <x2> <y2> <z2> <blok>\nforceload add <x> <z> | locate structure <structuur> | locate biome <biome> | particle <naam> <x> <y> <z>\ntick rate <waarde> | tick freeze | tick unfreeze\nscoreboard objectives add <naam> dummy | scoreboard players set <speler> <naam> <waarde> | team add <naam> | tag <speler> add <tag>\n\nSERVER\nsave-all | save-off | save-on | stop | reload | version | plugins\ntps | spark tps | spark healthreport | spark profiler start | spark profiler stop\n\nESSENTIALS\nheal <speler> | feed <speler> | fly <speler> | god <speler> | repair <speler> | clearinventory <speler>\nspeed walk|fly <1-10> <speler> | tphere <speler> | spawn <speler> | setspawn | warp <naam> <speler> | setwarp <naam> | delwarp <naam>\nwhois <speler> | seen <speler> | invsee <speler> | kickall [reden] | mute <speler> [tijd] | unmute <speler>\neco give <speler> <bedrag> | eco take <speler> <bedrag> | eco set <speler> <bedrag> | balance <speler>\nnick <speler> <naam> | give <speler> <item> [aantal] | item <item> [aantal] | sudo <speler> <command>\n\nLUCKPERMS (rechten en groepen)\nlp user <speler> info | lp user <speler> parent add <groep> | lp user <speler> parent remove <groep> | lp user <speler> parent set <groep>\nlp user <speler> permission set <recht> true|false | lp user <speler> permission unset <recht>\nlp group <groep> info | lp group <groep> permission set <recht> true|false | lp creategroup <groep> | lp deletegroup <groep> | lp listgroups\nlp user <speler> meta setprefix <gewicht> \"<prefix>\" | lp user <speler> meta setsuffix <gewicht> \"<suffix>\"\n\nWORLDGUARD (regio's)\nrg list -w world | rg info -w world <regio> | rg remove -w world <regio>\nrg flag -w world <regio> <flag> allow|deny | rg flag -w world <regio> <flag>   (zonder waarde = flag wissen)\nrg addowner -w world <regio> <speler> | rg removeowner -w world <regio> <speler> | rg addmember -w world <regio> <speler> | rg removemember -w world <regio> <speler>\nVeelgebruikte flags: build, block-break, block-place, use, pvp, tnt, creeper-explosion, mob-spawning, mob-damage, fire-spread, entry, exit, invincible, fall-damage\nLet op: rg define en rg redefine werken niet vanuit de console, daarvoor is een selectie van een speler nodig.\n\nGRIEFPREVENTION (claims)\nadjustbonusclaimblocks <speler> <aantal> | claimslist <speler> | deleteclaim (alleen door een speler) | trust <speler> (alleen door een speler)\n\nCHUNKY (wereld voorladen)\nchunky world <wereld> | chunky center <x> <z> | chunky radius <aantal> | chunky start | chunky pause | chunky continue | chunky cancel | chunky progress\n\nCOREPROTECT (logs)\nco lookup user:<speler> time:1h | co lookup user:<speler> time:1d action:block | co near (alleen door een speler)\n\nOVERIG\nsv on|off <speler> (SuperVanish: onzichtbaar maken)\ndrivebackup backup (handmatige backup)\ngrim reload | grim alerts\nLibertyBans: ban, mute, kick en unban zijn in gebruik door Essentials, gebruik de eigen versie met het voorvoegsel libertybans: ervoor als dat nodig is, bv. libertybans:ban <speler> <duur> <reden>\n\nNIET MOGELIJK VANUIT DE CONSOLE\nWorldEdit-commando's met // (//copy, //paste, //set, //undo) en alles wat een selectie, een positie of een speler als uitvoerder nodig heeft (rg define, rg redefine, claims maken, co inspect).\n`;"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -2560,
+        240
+      ],
+      "id": "1dbd5662-fc60-4278-8b83-28fdeb6aa54f",
+      "name": "mc_commands"
+    },
+    {
+      "parameters": {
+        "path": "wl-admin",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3056,
+        2096
+      ],
+      "id": "bb7696e0-ea5e-4d4c-bf3f-5bd6f0f1b510",
+      "name": "Admin GET",
+      "webhookId": "24a7a2b8-8170-42cc-a667-277059d95841",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wl-admin",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3056,
+        2512
+      ],
+      "id": "7e5a5034-febe-46ef-a794-a0ce37215367",
+      "name": "Admin POST",
+      "webhookId": "2fe6179f-b99b-4808-a0af-a037d755f47c",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst data = $input.first().json;\n\nfunction parseList(value) {\n  if (Array.isArray(value)) return value;\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value);\n      return Array.isArray(parsed) ? parsed : [];\n    } catch {\n      return [];\n    }\n  }\n  return [];\n}\n\nconst esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({\n  '&': '&amp;',\n  '<': '&lt;',\n  '>': '&gt;',\n  '\"': '&quot;',\n  \"'\": '&#39;'\n}[c]));\n\nconst day = value => {\n  if (!value) return '—';\n  const d = new Date(value);\n  return Number.isNaN(d.getTime())\n    ? '—'\n    : d.toISOString().slice(0, 10);\n};\n\nconst invites = parseList(data.invites);\nconst registrations = parseList(data.registrations);\n\nconst inviteRows = invites.map(i => {\n  const actions = `\n    ${i.status === 'available' ? `\n      <form method=\"POST\" action=\"/webhook/wl-admin\"\n        onsubmit=\"return confirm('Deze uitnodiging intrekken?')\">\n        <input type=\"hidden\" name=\"action\" value=\"revoke\">\n        <input type=\"hidden\" name=\"id\" value=\"${esc(i.id)}\">\n        <button class=\"revoke\" type=\"submit\">Intrekken</button>\n      </form>\n    ` : ''}\n    <form method=\"POST\" action=\"/webhook/wl-admin\"\n      onsubmit=\"return confirm('Deze uitnodiging verbergen uit het dashboard?')\">\n      <input type=\"hidden\" name=\"action\" value=\"delete\">\n      <input type=\"hidden\" name=\"id\" value=\"${esc(i.id)}\">\n      <button class=\"delete\" type=\"submit\">Verbergen</button>\n    </form>\n  `;\n\n  return `\n  <tr>\n    <td>${day(i.created_at)}</td>\n    <td>${esc(i.status === 'available' ? 'beschikbaar' : i.status)}</td>\n    <td>${esc(i.access_days)} dagen</td>\n    <td>${esc(i.use_count ?? 0)} / ${esc(i.max_uses ?? 1)}</td>\n    <td>${day(i.expires_at)}</td>\n    <td>${actions}</td>\n  </tr>`;\n}).join('');\n\nconst regRows = registrations.map(r => `\n<tr>\n  <td>${esc(r.username ?? r.minecraft_username)}</td>\n  <td>${esc(r.real_name)}</td>\n  <td>${day(r.created_at)}</td>\n  <td>${day(r.expires_at ?? r.access_expires_at)}</td>\n  <td>${esc(r.status)}</td>\n</tr>`).join('');\n\nconst html = `<!doctype html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Whitelist beheer</title>\n<style>\nbody{font-family:system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;background:#14161a;color:#e8e8e8}\ninput,button{padding:10px;margin:6px 0;border-radius:6px;border:1px solid #444;background:#1f2228;color:#fff;font-size:16px;width:100%;box-sizing:border-box}\nbutton{background:#4caf50;border:0;cursor:pointer}\nbutton.revoke{background:#c88724}\nbutton.delete{background:#b33a3a}\ntable{width:100%;border-collapse:collapse;font-size:14px}\ntd,th{padding:8px;border-bottom:1px solid #333;text-align:left;vertical-align:top}\n.card{background:#1b1e24;padding:16px;border-radius:10px;margin-bottom:16px;overflow-x:auto}\ntd form{margin:0 0 5px}\ntd button{min-width:95px}\n</style>\n</head>\n<body>\n<h1>Whitelist beheer</h1>\n\n<div class=\"card\">\n<h3>Nieuwe uitnodigingslink</h3>\n<form method=\"POST\" action=\"/webhook/wl-admin\">\n<input type=\"hidden\" name=\"action\" value=\"create\">\n\n<label>Minecraft-toegang (dagen)</label>\n<input type=\"number\" name=\"days\" value=\"365\" min=\"1\" max=\"3650\" required>\n\n<label>Link geldig (dagen)</label>\n<input type=\"number\" name=\"linkdays\" value=\"7\" min=\"1\" max=\"90\" required>\n\n<label>Maximum aantal gebruiken</label>\n<input type=\"number\" name=\"max_uses\" value=\"1\" min=\"1\" max=\"1000\" required>\n\n<button type=\"submit\">Link aanmaken</button>\n</form>\n</div>\n\n<div class=\"card\">\n<h3>Uitnodigingen</h3>\n<table>\n<tr>\n<th>Aangemaakt</th>\n<th>Status</th>\n<th>Toegang</th>\n<th>Gebruikt / maximum</th>\n<th>Link geldig tot</th>\n<th>Acties</th>\n</tr>\n${inviteRows || '<tr><td colspan=\"6\">Nog geen uitnodigingen.</td></tr>'}\n</table>\n</div>\n\n<div class=\"card\">\n<h3>Geregistreerde spelers</h3>\n<table>\n<tr><th>Minecraft</th><th>Naam</th><th>Aangemaakt</th><th>Toegang tot</th><th>Status</th></tr>\n${regRows || '<tr><td colspan=\"5\">Nog geen registraties.</td></tr>'}\n</table>\n</div>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2608,
+        2096
+      ],
+      "id": "f1deeb05-87cb-44ae-bb08-4990ad94bfee",
+      "name": "Admin pagina"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2384,
+        2096
+      ],
+      "id": "e781cfd3-b651-4b50-83a5-134030ab9d5c",
+      "name": "Respond admin"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH nieuwe_token AS (\n  SELECT encode(gen_random_bytes(32), 'hex') AS token\n),\nnieuwe_uitnodiging AS (\n  INSERT INTO minecraft_whitelist.invites (\n    token_hash,\n    status,\n    expires_at,\n    created_by,\n    access_days,\n    max_uses,\n    use_count\n  )\n  SELECT\n    encode(digest(nieuwe_token.token, 'sha256'), 'hex'),\n    'available',\n    NOW() + ($1::integer * INTERVAL '1 day'),\n    $2::text,\n    $3::integer,\n    $4::integer,\n    0\n  FROM nieuwe_token\n  RETURNING id, status, expires_at, access_days, max_uses, use_count\n)\nSELECT\n  nieuwe_uitnodiging.*,\n  nieuwe_token.token\nFROM nieuwe_uitnodiging\nCROSS JOIN nieuwe_token;",
+        "options": {
+          "queryReplacement": "=={{ [\n  $json.linkdays,\n  $json.created_by,\n  $json.accessdays,\n  $json.max_uses\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        2320
+      ],
+      "id": "083eb213-8d24-4cf7-8415-fefa57fabd36",
+      "name": "uitnodiging opslaan",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first().json;\nconst body = input.body ?? input;\n\nconst linkDays = Math.min(\n  90,\n  Math.max(1, Number(body.linkdays ?? 7))\n);\n\nconst accessDays = Math.min(\n  3650,\n  Math.max(1, Number(body.days ?? 365))\n);\n\nconst maxUses = Math.min(\n  1000,\n  Math.max(1, Number(body.max_uses ?? 1))\n);\n\nreturn [{\n  json: {\n  linkdays: linkDays,\n  accessdays: accessDays,\n  max_uses: maxUses,\n  created_by: 'admin_n8n'\n}\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2608,
+        2320
+      ],
+      "id": "ad2b03d7-b69e-4adf-99e3-63f9fbe992f7",
+      "name": "uitnodiging voorbereiden"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "ALTER TABLE minecraft_whitelist.invites\nADD COLUMN IF NOT EXISTS access_days INTEGER NOT NULL DEFAULT 365;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -3056,
+        1872
+      ],
+      "id": "426c1646-e5ed-4ff0-a1e2-183f01b3f930",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const saved = $input.first().json;\n\nconst token = saved.token;\nconst linkDays = $('uitnodiging voorbereiden').first().json.linkdays;\nconst accessDays = saved.access_days;\nconst maxUses = saved.max_uses;\n\nif (!token) {\n  throw new Error('Geen uitnodigingstoken ontvangen vanuit PostgreSQL.');\n}\n\nconst link = `http://10.20.236.220:5678/webhook/wl-join?token=${encodeURIComponent(token)}`;\n\nconst html = `\n<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Uitnodiging aangemaakt</title>\n</head>\n<body style=\"font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px\">\n  <h1>Uitnodiging aangemaakt</h1>\n  <p>De uitnodigingslink is aangemaakt.</p>\n  <p>De link is ${linkDays} dagen geldig.</p>\n  <p>De Minecraft-whitelisttoegang is ingesteld op ${accessDays} dagen.</p>\n  <p>Deze uitnodigingslink kan maximaal ${maxUses} keer gebruikt worden.</p>\n  <p><a href=\"${link}\">${link}</a></p>\n  <button onclick=\"navigator.clipboard.writeText(document.getElementById('link').textContent)\">Kopieer link</button>\n  <p id=\"link\" style=\"word-break:break-all\">${link}</p>\n  <p><a href=\"/webhook/wl-admin\">Terug naar beheer</a></p>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ...saved,\n    token,\n    link,\n    html\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2160,
+        2320
+      ],
+      "id": "98e275de-af62-4d08-a1fe-dc5fe83a2324",
+      "name": "uitnodiging resultaat"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=\n{{ $json.html }}\n",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1936,
+        2320
+      ],
+      "id": "707c6e6a-4133-4eb7-bf3e-c01a3b99d6e7",
+      "name": "Respond invite"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://minecraft-mcp:8000/sse",
+        "serverTransport": "sse",
+        "authentication": "headerAuth",
+        "include": "selected",
+        "includeTools": [
+          "minecraft_command"
+        ],
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        -2032,
+        256
+      ],
+      "id": "d1bd35ef-8df8-4a70-8751-1dd8504a9b5a",
+      "name": "MCP Client",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "r7qAjPyomOEW1xep",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COALESCE((\n    SELECT json_agg(\n      json_build_object(\n        'id', id,\n        'status', CASE\n          WHEN status = 'available' AND expires_at < NOW()\n          THEN 'expired'\n          ELSE status\n        END,\n        'created_at', created_at,\n        'expires_at', expires_at,\n        'access_days', access_days,\n        'use_count', use_count,\n        'max_uses', max_uses\n      ) ORDER BY created_at DESC\n    )\n    FROM minecraft_whitelist.invites\n    WHERE deleted_at IS NULL\n  ), '[]'::json) AS invites,\n  COALESCE((\n    SELECT json_agg(\n      json_build_object(\n        'username', minecraft_username,\n        'real_name', real_name,\n        'created_at', created_at,\n        'expires_at', access_expires_at,\n        'status', status\n      ) ORDER BY created_at DESC\n    )\n    FROM minecraft_whitelist.registrations\n  ), '[]'::json) AS registrations;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2832,
+        2096
+      ],
+      "id": "a1df9d92-8b17-4025-bf72-b87741dbdbe4",
+      "name": "Beheerdata ophalen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "wl-join",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3056,
+        1648
+      ],
+      "id": "d48776ee-c7ce-4031-b9f9-b703dba6e516",
+      "name": "Registratie GET",
+      "webhookId": "1555a582-e287-48f9-bd1d-565a51353012"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  $1::text AS token,\n  COALESCE((\n    SELECT json_build_object(\n      'id', id,\n      'access_days', access_days\n    )\n    FROM minecraft_whitelist.invites\n    WHERE token_hash = encode(\n      digest($1::text, 'sha256'),\n      'hex'\n    )\n      AND status = 'available'\n      AND expires_at > NOW()\n      AND used_at IS NULL\n      AND revoked_at IS NULL\n    LIMIT 1\n  ), 'null'::json) AS invite;",
+        "options": {
+          "queryReplacement": "=={{ [ $json.query.token || '' ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2832,
+        1648
+      ],
+      "id": "3b2237f5-9c25-4026-89b5-1b99b9625ebf",
+      "name": "Uitnodiging controleren",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst row = $input.first().json;\n\nlet invite = row.invite;\nif (typeof invite === 'string') {\n  try {\n    invite = JSON.parse(invite);\n  } catch {\n    invite = null;\n  }\n}\n\nconst token = String(row.token || '');\nconst geldig = invite && invite.id && token.length > 0;\n\nconst escapeHtml = (value) => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/\"/g, '&quot;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;');\n\nconst html = geldig\n  ? `<!doctype html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Minecraft whitelist aanvragen</title>\n</head>\n<body>\n<h1>Minecraft whitelist aanvragen</h1>\n<p>Je uitnodiging is geldig. Vul je gegevens in.</p>\n<form method=\"POST\" action=\"/webhook/wl-register\">\n<input type=\"hidden\" name=\"token\" value=\"${escapeHtml(token)}\">\n<label>Minecraft-gebruikersnaam</label><br>\n<input name=\"username\" minlength=\"3\" maxlength=\"16\"\npattern=\"[A-Za-z0-9_]{3,16}\" required><br><br>\n<label>Echte naam</label><br>\n<input name=\"real_name\" maxlength=\"100\" required><br><br>\n<button type=\"submit\">Registreren</button>\n</form>\n</body>\n</html>`\n  : `<!doctype html>\n<html lang=\"nl\">\n<head><meta charset=\"utf-8\"><title>Uitnodiging ongeldig</title></head>\n<body>\n<h1>Uitnodiging ongeldig</h1>\n<p>Deze uitnodiging is ongeldig, verlopen of al gebruikt.</p>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    geldig: !!geldig,\n    html,\n    invite_id: geldig ? invite.id : null\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2608,
+        1648
+      ],
+      "id": "640b82b4-5f4e-40d8-bc70-bdc075f150b8",
+      "name": "Registratiepagina maken"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2384,
+        1648
+      ],
+      "id": "cf4e052a-dd90-4693-bab2-ff0e8f6f4063",
+      "name": "Registratie pagina tonen"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wl-register",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3056,
+        3120
+      ],
+      "id": "6220f525-e862-4f49-9785-15410f57506b",
+      "name": "Registratie POST",
+      "webhookId": "deeadd72-db59-499f-b7fc-d4809e547ae3"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst body = $input.first().json.body ?? {};\nconst username = String(body.username ?? '').trim();\nconst realName = String(body.real_name ?? '').trim();\nconst token = String(body.token ?? '').trim();\n\nconst fouten = [];\n\nif (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {\n  fouten.push('De Minecraft-gebruikersnaam moet 3 tot 16 letters, cijfers of underscores bevatten.');\n}\n\nif (!realName || realName.length > 100) {\n  fouten.push('Vul een echte naam in van maximaal 100 tekens.');\n}\n\nif (!/^[a-fA-F0-9]{64}$/.test(token)) {\n  fouten.push('De uitnodigingstoken ontbreekt of is ongeldig.');\n}\n\nreturn [{\n  json: {\n    geldig: fouten.length === 0,\n    username,\n    real_name: realName,\n    token,\n    foutmelding: fouten.join(' ')\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2832,
+        3120
+      ],
+      "id": "6143f14e-e0a7-442b-bce1-a792e0c2bdf2",
+      "name": "Registratie invoer controleren"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "278bca6d-1054-4d81-97c0-170cafb51c90",
+              "leftValue": "={{ $json.geldig.toBoolean() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2608,
+        3120
+      ],
+      "id": "95c5e7ea-ee4e-4d20-9aa8-696822de9e38",
+      "name": "Registratie invoer controleren1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "\nSELECT\n  COALESCE((\n    SELECT json_build_object(\n      'id', id,\n      'access_days', access_days\n    )\n    FROM minecraft_whitelist.invites\n    WHERE token_hash = encode(\n        digest($1::text, 'sha256'),\n        'hex'\n      )\n      AND status = 'available'\n      AND expires_at > NOW()\n      AND used_at IS NULL\n      AND revoked_at IS NULL\n    LIMIT 1\n  ), 'null'::json) AS invite,\n  $2::text AS username,\n  $3::text AS real_name;\n",
+        "options": {
+          "queryReplacement": "=={{ [  $json.token,  $json.username,  $json.real_name] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        3056
+      ],
+      "id": "a5e08117-f90a-4ab4-b8c9-b44ce7d3d3e1",
+      "name": "Registratie uitnodiging controleren",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0374ed7f-3540-4450-afcc-ebb0ac84c6ba",
+              "leftValue": "={{ Boolean($json.invite?.id) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2160,
+        3056
+      ],
+      "id": "3f1ff95f-9108-4837-abfe-f2932f36d07d",
+      "name": "If uitnodiging geldig"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH gebruikte_uitnodiging AS (\n  UPDATE minecraft_whitelist.invites\n  SET\n    use_count = use_count + 1,\n    status = CASE\n      WHEN use_count + 1 >= max_uses THEN 'used'\n      ELSE 'available'\n    END,\n    used_at = CASE\n      WHEN use_count + 1 >= max_uses THEN NOW()\n      ELSE NULL\n    END\n  WHERE id = (($1::jsonb)->>'id')::integer\n    AND status = 'available'\n    AND expires_at > NOW()\n    AND use_count < max_uses\n    AND used_at IS NULL\n    AND revoked_at IS NULL\n  RETURNING id, access_days\n),\nnieuwe_registratie AS (\n  INSERT INTO minecraft_whitelist.registrations (\n    minecraft_username,\n    real_name,\n    status,\n    invite_id,\n    registered_at,\n    expires_at,\n    access_expires_at\n  )\n  SELECT\n    $2::text,\n    $3::text,\n    'pending',\n    id,\n    NOW(),\n    NULL,\n    NOW() + (access_days * INTERVAL '1 day')\n  FROM gebruikte_uitnodiging\n  RETURNING id, minecraft_username, real_name, access_expires_at\n)\nSELECT * FROM nieuwe_registratie;",
+        "options": {
+          "queryReplacement": "=={{ [\n  JSON.stringify(typeof $json.invite === 'string' ? JSON.parse($json.invite) : $json.invite),\n  $json.username,\n  $json.real_name\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -1936,
+        2976
+      ],
+      "id": "2578b5bc-b6d0-4dc3-bfcb-77a132b85cf7",
+      "name": "Registratie opslaan",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "90c72b7a-d7e2-46c2-82d5-6cf7f8150188",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1712,
+        2976
+      ],
+      "id": "4fe808cb-81c3-486c-840c-e8a5a2b0b3ac",
+      "name": "If registratie opgeslagen"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist add {{ $json.minecraft_username }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1488,
+        2928
+      ],
+      "id": "8044aad2-8933-4c28-98fc-4418cbbff163",
+      "name": "Minecraft whitelist toevoegen",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Registratie ontvangen</title>\n</head>\n<body>\n  <h1>Registratie ontvangen!</h1>\n  <p>Je aanvraag is verwerkt. Controleer straks of je op de Minecraft-server kunt.</p>\n</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1056,
+        2928
+      ],
+      "id": "7bf0f916-2316-456f-9410-0be83807cd89",
+      "name": "Registratie antwoord"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "\n<!doctype html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Registratie mislukt</title>\n</head>\n<body>\n  <h1>Registratie niet mogelijk</h1>\n  <p>Je gegevens zijn ongeldig of je uitnodiging is verlopen, ingetrokken of al gebruikt.</p>\n  <p>Controleer je gegevens of vraag de beheerder om een nieuwe uitnodiging.</p>\n</body>\n</html>\n",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1472,
+        3152
+      ],
+      "id": "6822ac69-ee76-4cc8-b4ea-acdb8a4f5b70",
+      "name": "Registratie foutmelding"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.registrations\nSET\n  status = 'active',\n  activated_at = NOW(),\n  updated_at = NOW()\nWHERE id = $1::integer\n  AND status = 'pending'\nRETURNING id, minecraft_username, status, access_expires_at;",
+        "options": {
+          "queryReplacement": "=={{ [ $('Registratie opslaan').first().json.id ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -1264,
+        2928
+      ],
+      "id": "fcfba14e-9ef7-4ed3-a1f5-9ff2d9267050",
+      "name": "Registratie activeren",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Voert één commando uit op de Minecraft-server via de console, zonder slash.\nVoorbeelden: say hallo, minecraft:list, whitelist add Speler.\nDeze tool geeft geen antwoord van de server terug. Lees daarna minecraft_log.",
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"command\": $fromAI(\"command\", \"Het volledige Minecraft-servercommando zonder slash, bijvoorbeeld say hello, list of whitelist add Speler\", \"string\") } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        -2368,
+        240
+      ],
+      "id": "614f1790-242d-4652-81d0-cffc77b299ee",
+      "name": "minecraft_command",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Leest het serverlog van de Minecraft-server. Gebruik dit ALTIJD na\nminecraft_command als je het resultaat van het commando nodig hebt.\nHet antwoord staat in de laatste regels onderaan.",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        -2192,
+        240
+      ],
+      "id": "73504f55-2f2f-4e88-8968-c3ece61c2b62",
+      "name": "minecraft_log",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9f5515c8-c2fc-4d53-8af0-941b2bd57fc7",
+              "leftValue": "={{ $json.body.action === 'create' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2832,
+        2512
+      ],
+      "id": "a6759936-792e-4e6a-87d5-be837a3a1692",
+      "name": "Admin actie controleren"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "revoke",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9337c8fc-e7f3-4483-9258-e447593125f3"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9ed63e3f-427b-4903-8ab8-338c67d68bb0",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "delete",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -2608,
+        2608
+      ],
+      "id": "d15e3254-bbb2-4f5a-b8d1-07fa5c539569",
+      "name": "Admin actie router"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.invites\nSET\n    status = 'revoked',\n    revoked_at = NOW()\nWHERE id = $1::bigint\n  AND status = 'available'\n  AND revoked_at IS NULL\nRETURNING id, status, revoked_at;",
+        "options": {
+          "queryReplacement": "={{ [$json.body.id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        2512
+      ],
+      "id": "9acc2561-63a5-4d46-abfe-aae2cda66715",
+      "name": "Uitnodiging intrekken",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.invites\nSET\n    status = CASE\n        WHEN status = 'available' THEN 'revoked'\n        ELSE status\n    END,\n    revoked_at = CASE\n        WHEN status = 'available' THEN NOW()\n        ELSE revoked_at\n    END,\n    deleted_at = NOW()\nWHERE id = $1::bigint\n  AND deleted_at IS NULL\nRETURNING id, status, deleted_at;",
+        "options": {
+          "queryReplacement": "={{ [$json.body.id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        2704
+      ],
+      "id": "5ad5f21f-b33f-4183-9a52-a32c932cbd9c",
+      "name": "Uitnodiging verbergen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0;url=/webhook/wl-admin\">\n</head>\n<body>Terug naar beheer...</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2160,
+        2512
+      ],
+      "id": "ea256f7d-eaaf-4074-a59a-8e5a020a9138",
+      "name": "Antwoord intrekken"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0;url=/webhook/wl-admin\">\n</head>\n<body>Terug naar beheer...</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2160,
+        2704
+      ],
+      "id": "78481153-7b74-4ca8-b255-1c9a5a1f2edb",
+      "name": "Antwoord verbergen"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -3056,
+        3424
+      ],
+      "id": "d5aa243b-d769-4e08-8f0c-7985c08ece60",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    id,\n    minecraft_username,\n    real_name,\n    status,\n    access_expires_at\nFROM minecraft_whitelist.registrations\nWHERE status = 'active'\n  AND access_expires_at <= NOW()\nORDER BY access_expires_at ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2832,
+        3424
+      ],
+      "id": "e451f714-c365-460e-8c61-0846e876afac",
+      "name": "Verlopen spelers ophalen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist remove {{$json.minecraft_username}}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2592,
+        3424
+      ],
+      "id": "66169fc4-214b-4acc-924b-1c3d2da93e95",
+      "name": "Minecraft whitelist verwijderen",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.registrations\nSET\n    access_expires_at = NOW() - INTERVAL '1 year',\n    updated_at = NOW()\nWHERE minecraft_username = 'Trepz420'\n  AND status = 'active'\nRETURNING id, minecraft_username, status, access_expires_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -3392,
+        3360
+      ],
+      "id": "16425a43-5f51-4214-887b-a11a5380585f",
+      "name": "Test Year Back",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "TRUNCATE TABLE\n    minecraft_whitelist.registrations,\n    minecraft_whitelist.invites\nRESTART IDENTITY CASCADE;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -3392,
+        3136
+      ],
+      "id": "9badb3eb-5a1c-4013-8c10-e125d3d6201b",
+      "name": "Delete al users",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## AI Chat \nDeze blokken zorgen ervoor dat je met een ai chat kan sturen naar de mc server en commando's kan meegeven of dingen vragen over de server.\nlink dashboard:\nhttp://10.20.236.220:5678/webhook/dashboard\nof (indien je toegang er tot hebt)\nhttp://localhost:5678/webhook/dashboard",
+        "height": 192,
+        "width": 448,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3056,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "6fd51a42-723b-4ed3-8a00-f9550125c89b",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Respond chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook status": {
+      "main": [
+        [
+          {
+            "node": "Resources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resources": {
+      "main": [
+        [
+          {
+            "node": "List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Respond status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond chat": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook chat": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mc_commands": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin GET": {
+      "main": [
+        [
+          {
+            "node": "Beheerdata ophalen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin POST": {
+      "main": [
+        [
+          {
+            "node": "Admin actie controleren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin pagina": {
+      "main": [
+        [
+          {
+            "node": "Respond admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uitnodiging opslaan": {
+      "main": [
+        [
+          {
+            "node": "uitnodiging resultaat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uitnodiging voorbereiden": {
+      "main": [
+        [
+          {
+            "node": "uitnodiging opslaan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uitnodiging resultaat": {
+      "main": [
+        [
+          {
+            "node": "Respond invite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Beheerdata ophalen": {
+      "main": [
+        [
+          {
+            "node": "Admin pagina",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie GET": {
+      "main": [
+        [
+          {
+            "node": "Uitnodiging controleren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uitnodiging controleren": {
+      "main": [
+        [
+          {
+            "node": "Registratiepagina maken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratiepagina maken": {
+      "main": [
+        [
+          {
+            "node": "Registratie pagina tonen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie POST": {
+      "main": [
+        [
+          {
+            "node": "Registratie invoer controleren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie invoer controleren": {
+      "main": [
+        [
+          {
+            "node": "Registratie invoer controleren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie invoer controleren1": {
+      "main": [
+        [
+          {
+            "node": "Registratie uitnodiging controleren",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registratie foutmelding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie uitnodiging controleren": {
+      "main": [
+        [
+          {
+            "node": "If uitnodiging geldig",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If uitnodiging geldig": {
+      "main": [
+        [
+          {
+            "node": "Registratie opslaan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registratie foutmelding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie opslaan": {
+      "main": [
+        [
+          {
+            "node": "If registratie opgeslagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If registratie opgeslagen": {
+      "main": [
+        [
+          {
+            "node": "Minecraft whitelist toevoegen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registratie foutmelding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Minecraft whitelist toevoegen": {
+      "main": [
+        [
+          {
+            "node": "Registratie activeren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie foutmelding": {
+      "main": [
+        []
+      ]
+    },
+    "minecraft_command": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "minecraft_log": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin actie controleren": {
+      "main": [
+        [
+          {
+            "node": "uitnodiging voorbereiden",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Admin actie router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin actie router": {
+      "main": [
+        [
+          {
+            "node": "Uitnodiging intrekken",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uitnodiging verbergen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uitnodiging intrekken": {
+      "main": [
+        [
+          {
+            "node": "Antwoord intrekken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uitnodiging verbergen": {
+      "main": [
+        [
+          {
+            "node": "Antwoord verbergen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verlopen spelers ophalen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verlopen spelers ophalen": {
+      "main": [
+        [
+          {
+            "node": "Minecraft whitelist verwijderen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie activeren": {
+      "main": [
+        [
+          {
+            "node": "Registratie antwoord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete al users": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "ac11a327-5af3-453b-91ea-14be736cca94",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9cf5af73bc08752877f386ad2f15a2b73065b214d1c0cc4cee615a7b93dbea3"
+  },
+  "nodeGroups": [],
+  "id": "VeCUgmzBsbhUbqfp",
+  "tags": []
+}

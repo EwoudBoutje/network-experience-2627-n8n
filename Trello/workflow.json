@@ -1,0 +1,208 @@
+{
+  "name": "Trello",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f51a6b01-81c3-4430-8ba3-13af1304f358",
+      "name": "When chat message received",
+      "webhookId": "84f678ba-0d5c-4bc8-83ce-dfa6158e7928"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        384,
+        0
+      ],
+      "id": "2c99e9cb-acaf-4e94-9929-a1bbbdd45108",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-27b",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-27b"
+        },
+        "builtInTools": {
+          "webSearch": {
+            "searchContextSize": "medium"
+          }
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        208
+      ],
+      "id": "b100ea72-631d-4ff3-8dc7-ba6f46a4aa13",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zr4WedfNzsZ4SHIx",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        400,
+        208
+      ],
+      "id": "16a6ddcd-1096-496b-b54b-0939ac4d6ea0",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/mcp-registry.gitHub",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        320
+      ],
+      "id": "a7899693-02b9-4c57-8ac5-ca7c584c05fb",
+      "name": "GitHub MCP"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/mcp-registry.trello",
+      "typeVersion": 1.1,
+      "position": [
+        736,
+        160
+      ],
+      "id": "a3ef7cc1-1f48-4120-9381-f7040e8d7b55",
+      "name": "Trello MCP",
+      "credentials": {
+        "trelloMcpOAuth2Api": {
+          "id": "ZJpv1wvrdvX1G1D5",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://api.githubcopilot.com/mcp/readonly",
+        "authentication": "bearerAuth",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        528,
+        240
+      ],
+      "id": "b56e055b-e688-4835-abbb-a12e3e09c5bf",
+      "name": "GithubMCP",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "dkFxOJ6jcB12lw3b",
+          "name": "Bearer Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub MCP": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Trello MCP": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "GithubMCP": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "3485f589-35d2-45b6-b92d-5933e5cfde6e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9cf5af73bc08752877f386ad2f15a2b73065b214d1c0cc4cee615a7b93dbea3"
+  },
+  "nodeGroups": [],
+  "id": "tXPyBYfKFSdjVuGW",
+  "tags": []
+}
