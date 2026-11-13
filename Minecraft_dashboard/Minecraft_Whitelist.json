@@ -141,7 +141,7 @@
     },
     {
       "parameters": {
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/resources",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/resources",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -173,7 +173,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -226,7 +226,7 @@
     },
     {
       "parameters": {
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -477,7 +477,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const saved = $input.first().json;\n\nconst token = saved.token;\nconst linkDays = $('uitnodiging voorbereiden').first().json.linkdays;\nconst accessDays = saved.access_days;\nconst maxUses = saved.max_uses;\n\nif (!token) {\n  throw new Error('Geen uitnodigingstoken ontvangen vanuit PostgreSQL.');\n}\n\nconst link = `http://10.20.236.220:5678/webhook/wl-join?token=${encodeURIComponent(token)}`;\n\nconst html = `\n<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Uitnodiging aangemaakt</title>\n</head>\n<body style=\"font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px\">\n  <h1>Uitnodiging aangemaakt</h1>\n  <p>De uitnodigingslink is aangemaakt.</p>\n  <p>De link is ${linkDays} dagen geldig.</p>\n  <p>De Minecraft-whitelisttoegang is ingesteld op ${accessDays} dagen.</p>\n  <p>Deze uitnodigingslink kan maximaal ${maxUses} keer gebruikt worden.</p>\n  <p><a href=\"${link}\">${link}</a></p>\n  <button onclick=\"navigator.clipboard.writeText(document.getElementById('link').textContent)\">Kopieer link</button>\n  <p id=\"link\" style=\"word-break:break-all\">${link}</p>\n  <p><a href=\"/webhook/wl-admin\">Terug naar beheer</a></p>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ...saved,\n    token,\n    link,\n    html\n  }\n}];"
+        "jsCode": "const saved = $input.first().json;\n\nconst token = saved.token;\nconst linkDays = $('uitnodiging voorbereiden').first().json.linkdays;\nconst accessDays = saved.access_days;\nconst maxUses = saved.max_uses;\n\nif (!token) {\n  throw new Error('Geen uitnodigingstoken ontvangen vanuit PostgreSQL.');\n}\n\nconst link = `http://N8N_HOST:5678/webhook/wl-join?token=${encodeURIComponent(token)}`;\n\nconst html = `\n<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Uitnodiging aangemaakt</title>\n</head>\n<body style=\"font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px\">\n  <h1>Uitnodiging aangemaakt</h1>\n  <p>De uitnodigingslink is aangemaakt.</p>\n  <p>De link is ${linkDays} dagen geldig.</p>\n  <p>De Minecraft-whitelisttoegang is ingesteld op ${accessDays} dagen.</p>\n  <p>Deze uitnodigingslink kan maximaal ${maxUses} keer gebruikt worden.</p>\n  <p><a href=\"${link}\">${link}</a></p>\n  <button onclick=\"navigator.clipboard.writeText(document.getElementById('link').textContent)\">Kopieer link</button>\n  <p id=\"link\" style=\"word-break:break-all\">${link}</p>\n  <p><a href=\"/webhook/wl-admin\">Terug naar beheer</a></p>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ...saved,\n    token,\n    link,\n    html\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -816,7 +816,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -927,7 +927,7 @@
       "parameters": {
         "toolDescription": "Voert één commando uit op de Minecraft-server via de console, zonder slash.\nVoorbeelden: say hallo, minecraft:list, whitelist add Speler.\nDeze tool geeft geen antwoord van de server terug. Lees daarna minecraft_log.",
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -966,7 +966,7 @@
     {
       "parameters": {
         "toolDescription": "Leest het serverlog van de Minecraft-server. Gebruik dit ALTIJD na\nminecraft_command als je het resultaat van het commando nodig hebt.\nHet antwoord staat in de laatste regels onderaan.",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -1229,7 +1229,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -1316,7 +1316,7 @@
     },
     {
       "parameters": {
-        "content": "## AI Chat \nDeze blokken zorgen ervoor dat je met een ai chat kan sturen naar de mc server en commando's kan meegeven of dingen vragen over de server.\nlink dashboard:\nhttp://10.20.236.220:5678/webhook/dashboard\nof (indien je toegang er tot hebt)\nhttp://localhost:5678/webhook/dashboard",
+        "content": "## AI Chat \nDeze blokken zorgen ervoor dat je met een ai chat kan sturen naar de mc server en commando's kan meegeven of dingen vragen over de server.\nlink dashboard:\nhttp://N8N_HOST:5678/webhook/dashboard\nof (indien je toegang er tot hebt)\nhttp://localhost:5678/webhook/dashboard",
         "height": 192,
         "width": 448,
         "color": 6
