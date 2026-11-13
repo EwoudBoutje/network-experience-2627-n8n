@@ -71,16 +71,26 @@
     },
     {
       "parameters": {
+        "include": "selected",
+        "includeTools": [
+          "get_file_contents"
+        ],
         "options": {}
       },
       "type": "@n8n/mcp-registry.gitHub",
       "typeVersion": 1.1,
       "position": [
-        672,
-        320
+        576,
+        224
       ],
       "id": "a7899693-02b9-4c57-8ac5-ca7c584c05fb",
-      "name": "GitHub MCP"
+      "name": "GitHub MCP",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "AAJ5NxWay6LbDSmA",
+          "name": "GitHub account"
+        }
+      }
     },
     {
       "parameters": {
@@ -98,27 +108,6 @@
         "trelloMcpOAuth2Api": {
           "id": "ZJpv1wvrdvX1G1D5",
           "name": "Trello account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "endpointUrl": "https://api.githubcopilot.com/mcp/readonly",
-        "authentication": "bearerAuth",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
-      "typeVersion": 1.4,
-      "position": [
-        528,
-        240
-      ],
-      "id": "b56e055b-e688-4835-abbb-a12e3e09c5bf",
-      "name": "GithubMCP",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "dkFxOJ6jcB12lw3b",
-          "name": "Bearer Auth account"
         }
       }
     }
@@ -160,7 +149,13 @@
     },
     "GitHub MCP": {
       "ai_tool": [
-        []
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
       ]
     },
     "Trello MCP": {
@@ -178,17 +173,6 @@
       "main": [
         []
       ]
-    },
-    "GithubMCP": {
-      "ai_tool": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
@@ -197,7 +181,7 @@
     "binaryMode": "separate",
     "availableInMCP": true
   },
-  "versionId": "3485f589-35d2-45b6-b92d-5933e5cfde6e",
+  "versionId": "5571f7f8-cbcc-4baa-adce-9d4873ca6084",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e9cf5af73bc08752877f386ad2f15a2b73065b214d1c0cc4cee615a7b93dbea3"
