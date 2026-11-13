@@ -145,7 +145,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -184,7 +184,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -287,7 +287,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "url": "http://PTERODACTYL_HOST/api/client/servers/5ed5eed2/command",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
