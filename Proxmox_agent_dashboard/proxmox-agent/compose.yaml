@@ -1,0 +1,41 @@
+name: proxmox-agent
+
+services:
+  proxmox-mcp:
+    build:
+      context: ./source
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      PROXMOX_MCP_CONFIG: /app/no-local-config.json
+
+      PROXMOX_MCP_MODE: mcp-http
+      MCP_TRANSPORT: STREAMABLE_HTTP
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8000"
+      MCP_ALLOW_UNAUTHENTICATED_HTTP: "false"
+
+      MCP_DNS_REBINDING_PROTECTION: "true"
+      MCP_ALLOWED_HOSTS: "proxmox-mcp:8000,localhost:8000"
+
+      PROXMOX_JOBS_SQLITE_PATH: /app/data/proxmox-jobs.sqlite3
+      REQUESTS_CA_BUNDLE: /app/certs/proxmox-ca.pem
+
+    volumes:
+      - proxmox_jobs:/app/data
+      - ./certs/proxmox-ca.pem:/app/certs/proxmox-ca.pem:ro
+
+    networks:
+      - proxmox-tools
+
+volumes:
+  proxmox_jobs:
+
+networks:
+  proxmox-tools:
+    external: true
+    name: proxmox-tools

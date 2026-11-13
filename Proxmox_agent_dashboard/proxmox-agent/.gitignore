@@ -1,0 +1,8 @@
+# Lokale configuratie en geheimen
+.env
+
+# Persoonlijke Proxmox CA
+certs/proxmox-ca.pem
+
+# Lokale back-ups
+*.before-dashboard
