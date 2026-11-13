@@ -23,6 +23,7 @@ Het project bestaat uit een centrale n8n-installatie en verschillende afzonderli
   - [Credentials en beveiliging](#credentials-en-beveiliging)
   - [Documentatie per onderdeel](#documentatie-per-onderdeel)
     - [Minecraft Dashboard](#minecraft-dashboard)
+  - [Minecraft Whitelist Portal](#minecraft-whitelist-portal)
     - [Trello](#trello)
     - [Proxmox Agent Dashboard](#proxmox-agent-dashboard)
     - [Proxmox MCP Workshop](#proxmox-mcp-workshop)
@@ -72,6 +73,9 @@ network-experience-2627-n8n/
 ├── Minecraft_dashboard/
 │   ├── README.md
 │   ├── Minecraft_Whitelist.json
+│   ├── Minecraft_Whitelist_Portal/
+│   │   ├── README.md
+│   │   └── workflow.json
 │   └── minecraft-mcp/
 │       ├── compose.yaml
 │       ├── Dockerfile
@@ -311,6 +315,18 @@ Minecraft_dashboard/minecraft-mcp/
 ```
 
 De MCP-server moet bereikbaar zijn vanuit n8n. Zorg daarom dat beide containers op een gedeeld Docker-netwerk zitten.
+
+### Minecraft Whitelist Portal
+
+[Minecraft Whitelist Portal – README.md](Minecraft_dashboard/Minecraft_Whitelist_Portal/README.md)
+
+De aparte portal laat studenten via Authentik aanmelden met hun schoolaccount en hun Minecraft Java-gebruikersnaam registreren. De registratie wordt gekoppeld aan het R-nummer en opgeslagen in PostgreSQL.
+
+De workflow staat in:
+
+`Minecraft_dashboard/Minecraft_Whitelist_Portal/workflow.json`
+
+De workflow ondersteunt het vervangen van gebruikersnamen en een automatische semesterreset op 1 februari en 1 september. Raadpleeg de aparte README voor installatie, Authentik, Pterodactyl en beveiliging.
 
 ### Trello
 

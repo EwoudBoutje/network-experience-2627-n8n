@@ -1,0 +1,495 @@
+{
+  "name": "Minecraft Whitelist Portal",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "minecraft-portal",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c1e25b13-3be5-436a-8645-35448cc4f4c3",
+      "name": "Webhook",
+      "webhookId": "513f85d9-de83-4d5b-a72a-6fc10f1d65cf"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "0b90f534-3f8c-4eee-bd19-7a966e606f73",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "minecraft-portal",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "a5a1b9f3-967d-4a8d-a4b2-da00b2b138f1",
+      "name": "POST-afhandeling",
+      "webhookId": "fcf6a3b3-2a5b-4383-9e27-892b1321a77f"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst headers = $input.first().json.headers ?? {};\nconst rNumber =\n    headers['x-authentik-username'] ??\n    headers['x-authentik-user'] ??\n    'r0982191';\n\nconst safeRNumber = String(rNumber).replace(/[&<>\"']/g, char => ({\n    '&': '&amp;',\n    '<': '&lt;',\n    '>': '&gt;',\n    '\"': '&quot;',\n    \"'\": '&#39;'\n})[char]);\n\nconst html = `\n<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Minecraft Whitelist Portal</title>\n<style>\n    body {\n        font-family: Arial, sans-serif;\n        background: #111827;\n        color: white;\n        display: flex;\n        justify-content: center;\n        align-items: center;\n        min-height: 100vh;\n        margin: 0;\n    }\n    .container {\n        background: #1f2937;\n        padding: 35px;\n        border-radius: 14px;\n        width: 90%;\n        max-width: 450px;\n    }\n    .account {\n        background: #374151;\n        padding: 15px;\n        border-radius: 8px;\n        margin: 20px 0;\n    }\n    input, button {\n        box-sizing: border-box;\n        width: 100%;\n        padding: 13px;\n        margin-top: 10px;\n        border-radius: 7px;\n        font-size: 15px;\n    }\n    input {\n        background: #111827;\n        border: 1px solid #4b5563;\n        color: white;\n    }\n    button {\n        background: #16a34a;\n        border: none;\n        color: white;\n        font-weight: bold;\n        cursor: pointer;\n    }\n    .tag {\n        color: #9ca3af;\n        font-size: 13px;\n    }\n</style>\n</head>\n<body>\n<div class=\"container\">\n    <h1>Minecraft Whitelist Portal</h1>\n    <p>Registreer je Minecraft Java-account.</p>\n\n    <div class=\"account\">\n        <div class=\"tag\">Aangemeld schoolaccount</div>\n        <h2>${safeRNumber}</h2>\n    </div>\n\n    <form method=\"POST\" action=\"/webhook/minecraft-portal\">\n        <label for=\"username\">Minecraft Java-username</label>\n        <input\n            id=\"username\"\n            name=\"minecraft_username\"\n            type=\"text\"\n            placeholder=\"Bijvoorbeeld Steve123\"\n            minlength=\"3\"\n            maxlength=\"16\"\n            pattern=\"[A-Za-z0-9_]{3,16}\"\n            required\n        >\n        <button type=\"submit\">Registreren en whitelisten</button>\n    </form>\n</div>\n</body>\n</html>\n`;\n\nreturn [{ json: { html, rNumber } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "25b23525-c927-4f04-8a79-c89bfb48fbb8",
+      "name": "website + r nummer finding"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Minecraft registratie</title>\n</head>\n<body style=\"font-family: Arial; background:#111827; color:white; padding:40px;\">\n    <h1>Registratie geslaagd!</h1>\n    <p>Je Minecraft-account is opgeslagen.</p>\n    <p>Je kunt dit venster sluiten.</p>\n</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1600,
+        224
+      ],
+      "id": "a193e944-f694-43e2-8b36-09a31e6fba47",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst headers = data.headers ?? {};\nconst body = data.body ?? {};\n\nconst rNumber =\n    headers['x-authentik-username'] ??\n    headers['x-authentik-user'] ??\n    'r0982191';\n\nconst username = String(body.minecraft_username ?? '').trim();\n\nif (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {\n    return [{\n        json: {\n            success: false,\n            message: 'Ongeldige Minecraft-username. Gebruik 3 tot 16 letters, cijfers of underscores.'\n        }\n    }];\n}\n\nreturn [{\n    json: {\n        success: true,\n        rNumber,\n        username\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        192
+      ],
+      "id": "201ea11e-1875-46aa-a75a-ee2c685ee06d",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5af69cdc-a621-4a89-9f3e-dbc779232692",
+              "leftValue": "={{ $json.old_username }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        640,
+        192
+      ],
+      "id": "23b5be91-2a4f-407a-bc82-5fea525778f7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist add {{ $('SaveUser').first().json.username }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        224
+      ],
+      "id": "e9cdba40-01a6-4740-983c-ed220ec93ef4",
+      "name": "whitelist add",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist remove {{ $('SaveUser').first().json.old_username }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        944,
+        112
+      ],
+      "id": "bb23367f-8275-4797-80a9-f2648793d3ca",
+      "name": "whitelist remove",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH previous AS (\n    SELECT minecraft_username AS old_username\n    FROM minecraft_registrations\n    WHERE r_number = $1\n),\nupsert AS (\n    INSERT INTO minecraft_registrations (\n        r_number,\n        minecraft_username,\n        active,\n        registered_at,\n        updated_at\n    )\n    VALUES (\n        $1,\n        $2,\n        TRUE,\n        CURRENT_TIMESTAMP,\n        CURRENT_TIMESTAMP\n    )\n    ON CONFLICT (r_number)\n    DO UPDATE SET\n        minecraft_username = EXCLUDED.minecraft_username,\n        active = TRUE,\n        updated_at = CURRENT_TIMESTAMP\n    RETURNING r_number, minecraft_username\n)\nSELECT\n    upsert.r_number,\n    upsert.minecraft_username AS username,\n    previous.old_username\nFROM upsert\nLEFT JOIN previous ON TRUE;",
+        "options": {
+          "queryReplacement": "={{ [$json.rNumber, $json.username] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        192
+      ],
+      "id": "94bcb2bc-2710-4ca8-9d81-e464368ca4ed",
+      "name": "SaveUser",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 1 2,9 *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        368
+      ],
+      "id": "7fd44651-dbf4-4698-94f6-e120d88025ef",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT minecraft_username\nFROM minecraft_registrations\nWHERE active = TRUE;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        368
+      ],
+      "id": "7a3ed546-d36b-45fa-869f-ac9235c3182c",
+      "name": "Username's ophalen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist remove {{ $json.minecraft_username }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        368
+      ],
+      "id": "3fc302ff-af3b-4c52-845e-654d74435a09",
+      "name": "remove users",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM minecraft_registrations;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        368
+      ],
+      "id": "a1375d4a-145a-40d7-b1d4-ff1d9cfc0ee9",
+      "name": "clean database",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "website + r nummer finding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST-afhandeling": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "website + r nummer finding": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "SaveUser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "whitelist remove",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "whitelist add",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "whitelist add": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "whitelist remove": {
+      "main": [
+        [
+          {
+            "node": "whitelist add",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveUser": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Username's ophalen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Username's ophalen": {
+      "main": [
+        [
+          {
+            "node": "remove users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "remove users": {
+      "main": [
+        [
+          {
+            "node": "clean database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "966cba1d-92a8-443a-a9a2-326b27dc62d6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9cf5af73bc08752877f386ad2f15a2b73065b214d1c0cc4cee615a7b93dbea3"
+  },
+  "nodeGroups": [],
+  "id": "K8uW5u9EIuKwOnds",
+  "tags": []
+}
