@@ -1,0 +1,51 @@
+---
+- name: Pakketlijst bijwerken
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Basispakketten installeren
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+
+- name: Huidige tijdzone lezen
+  ansible.builtin.command: timedatectl show --property=Timezone --value
+  register: base_current_tz
+  changed_when: false
+
+- name: Tijdzone instellen
+  ansible.builtin.command: "timedatectl set-timezone {{ base_timezone }}"
+  when: base_current_tz.stdout | trim != base_timezone
+
+- name: Diensten starten
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - qemu-guest-agent
+    - fail2ban
+    - unattended-upgrades
+
+- name: SSH beperken tot sleutels
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-lab.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Beheerd door Ansible (deployment {{ deploy.deployment_id }})
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+    validate: /usr/sbin/sshd -t -f %s
+  notify: SSH herstarten
+
+- name: Welkomstbericht met deploymentinformatie
+  ansible.builtin.template:
+    src: motd.j2
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: "0644"

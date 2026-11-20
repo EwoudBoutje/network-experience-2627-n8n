@@ -1,0 +1,42 @@
+---
+# deploy_users: [{name, ssh_public_key, sudo}] (per VM gezet door add_host in deploy.yml)
+- name: Gebruikers aanmaken
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    shell: /bin/bash
+    create_home: true
+    # Geen wachtwoord: aanmelden kan enkel met de SSH-key.
+    password: "*"
+    update_password: on_create
+  loop: "{{ deploy_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: SSH-key per gebruiker instellen
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_public_key }}"
+    exclusive: true
+  loop: "{{ deploy_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Sudo-rechten toekennen
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-infra-{{ item.name }}"
+    owner: root
+    group: root
+    mode: "0440"
+    content: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL\n"
+    validate: /usr/sbin/visudo -cf %s
+  loop: "{{ deploy_users | selectattr('sudo') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Sudo-rechten verwijderen waar ze niet (meer) toegestaan zijn
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/90-infra-{{ item.name }}"
+    state: absent
+  loop: "{{ deploy_users | rejectattr('sudo') | list }}"
+  loop_control:
+    label: "{{ item.name }}"

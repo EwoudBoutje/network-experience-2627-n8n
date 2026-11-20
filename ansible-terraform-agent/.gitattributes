@@ -1,0 +1,13 @@
+# Bestanden die in Linux-containers draaien moeten LF-regeleinden houden,
+# ook bij een checkout op Windows.
+*.sh        text eol=lf
+*.py        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.j2        text eol=lf
+*.cfg       text eol=lf
+*.tf        text eol=lf
+*.json      text eol=lf
+*.service   text eol=lf
+*.example   text eol=lf
+Dockerfile  text eol=lf

@@ -1,0 +1,19 @@
+---
+# MCP-servers als Ansible-"hosts".
+# ansible.mcp leest de URL per server uit het manifest (/opt/infra-agent/mcpservers.json),
+# op basis van ansible_mcp_server_name. Taken op deze hosts draaien op de control node;
+# er wordt geen SSH gebruikt.
+#
+# De VM's van een deployment staan hier niet: playbooks/deploy.yml voegt ze tijdens de
+# run toe met add_host (groep deployment_vms), op basis van wat proxmox-mcp teruggeeft.
+all:
+  children:
+    mcp_servers:
+      vars:
+        ansible_connection: ansible.mcp.mcp
+        ansible_mcp_manifest_path: /opt/infra-agent/mcpservers.json
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      hosts:
+        proxmox_mcp:
+          ansible_mcp_server_name: proxmox-mcp
+          ansible_mcp_bearer_token: "{{ lookup('ansible.builtin.file', '/run/secrets/proxmox_mcp_token') }}"

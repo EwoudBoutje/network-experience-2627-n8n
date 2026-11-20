@@ -1,0 +1,22 @@
+---
+- name: Docker installeren (Debian-pakketten)
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+
+- name: Docker starten
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Gebruikers van deze VM toevoegen aan de groep docker
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: docker
+    append: true
+  loop: "{{ deploy_users | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"

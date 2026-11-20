@@ -1,0 +1,9 @@
+---
+base_timezone: Europe/Brussels
+base_packages:
+  - qemu-guest-agent
+  - unattended-upgrades
+  - fail2ban
+  - curl
+  - vim
+  - htop

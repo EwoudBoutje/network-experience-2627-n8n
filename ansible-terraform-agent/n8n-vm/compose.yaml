@@ -1,0 +1,84 @@
+name: infra-agent
+
+# Draait op de n8n-VM. Starten vanuit deze map:
+#   sudo docker compose up -d --build
+# Vooraf: .env en secrets/ vullen (zie ../README.md). Het netwerk proxmox-tools
+# moet bestaan (aangemaakt voor proxmox-mcp).
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # Terraform Registry-documentatie voor de AI-agent (providers, resources).
+  # Zonder HCP-token zijn alleen de registry-tools actief; plan/apply doet infra-tf
+  # op de Terraform-VM.
+  terraform-mcp:
+    <<: *hardening
+    image: hashicorp/terraform-mcp-server:1.4.1
+    environment:
+      TRANSPORT_MODE: streamable-http
+      # 0.0.0.0 geldt als "lokaal": geen TLS vereist. Geen gepubliceerde poort.
+      TRANSPORT_HOST: 0.0.0.0
+      TRANSPORT_PORT: "8080"
+      MCP_ENDPOINT: /mcp
+      ENABLE_TF_OPERATIONS: "false"
+    networks:
+      - infra-tools
+      - infra-egress
+
+  # Ansible als MCP-server; gebruikt zelf ansible.mcp naar proxmox-mcp en
+  # haalt deployments op bij infra-tf (Terraform-VM).
+  ansible-mcp:
+    <<: *hardening
+    build:
+      context: ..
+      dockerfile: n8n-vm/ansible-mcp/Dockerfile
+    environment:
+      INFRA_TF_URL: ${INFRA_TF_URL:?Zet INFRA_TF_URL in .env, bv. http://10.0.0.20:8001/mcp}
+      MCP_PORT: "8000"
+    secrets:
+      - ansible_mcp_token
+      - infra_tf_token
+      - proxmox_mcp_token
+      - vm_ssh_key
+    volumes:
+      - ../ansible:/opt/infra-agent/ansible:ro
+      - ./mcpservers.json:/opt/infra-agent/mcpservers.json:ro
+      - ansible_data:/var/lib/infra-agent
+    networks:
+      - infra-tools
+      - proxmox-tools
+      - infra-egress
+
+# Bestanden moeten leesbaar zijn voor uid 10001 (zie README: chown 10001:10001).
+secrets:
+  ansible_mcp_token:
+    file: ./secrets/ansible_mcp_token
+  infra_tf_token:
+    file: ./secrets/infra_tf_token
+  proxmox_mcp_token:
+    file: ./secrets/proxmox_mcp_token
+  vm_ssh_key:
+    file: ./secrets/vm_ssh_key
+
+volumes:
+  ansible_data:
+
+networks:
+  # n8n moet hierop aangesloten worden (zie README).
+  infra-tools:
+    name: infra-tools
+  # Bestaat al: aangemaakt voor proxmox-mcp.
+  proxmox-tools:
+    name: proxmox-tools
+    external: true
+  # Uitgaand: Terraform Registry, infra-tf op de Terraform-VM en SSH naar de VM's.
+  infra-egress:
+    name: infra-egress

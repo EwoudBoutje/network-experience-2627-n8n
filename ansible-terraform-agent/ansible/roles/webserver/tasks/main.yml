@@ -1,0 +1,29 @@
+---
+# Rolvariabelen komen binnen als role_vars (zie catalog.yml).
+- name: nginx installeren
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: PHP-FPM installeren (optioneel)
+  ansible.builtin.apt:
+    name:
+      - php-fpm
+      - php-cli
+    state: present
+  when: role_vars.install_php | default(false) | bool
+
+- name: Testpagina plaatsen
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+- name: nginx starten
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true

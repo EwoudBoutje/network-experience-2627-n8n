@@ -1,0 +1,16 @@
+---
+# Catalogus van rollen die de agent per VM-groep mag kiezen.
+# - Alleen rollen uit deze lijst mogen in een run voorkomen (deploy_run.py controleert dit).
+# - "vars" beschrijft de toegestane rolvariabelen en hun type (bool, int, str).
+# - Houd deze lijst gelijk met cfg.roles in de n8n-node "Configuratie".
+# - Een nieuwe rol toevoegen: map in roles/ maken, hier registreren, cfg.roles aanvullen.
+#
+# De rollen base en user_access worden altijd toegepast en staan hier niet.
+roles:
+  webserver:
+    description: "nginx-webserver met een testpagina; optioneel PHP-FPM."
+    vars:
+      install_php: bool
+  docker:
+    description: "Docker Engine (Debian-pakket docker.io); gebruikers van de VM komen in de groep docker."
+    vars: {}

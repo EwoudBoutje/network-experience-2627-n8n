@@ -1,0 +1,6 @@
+{
+  "proxmox-mcp": {
+    "type": "http",
+    "url": "http://proxmox-mcp:8000/mcp"
+  }
+}

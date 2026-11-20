@@ -1,0 +1,7 @@
+
+  Deployment : {{ deploy.naam | default(deploy.deployment_id) }}
+  VM         : {{ inventory_hostname }}
+
+  Deze VM is automatisch aangemaakt en wordt beheerd door de
+  Terraform/Ansible-agent. Wijzigingen buiten Ansible kunnen verloren gaan.
+

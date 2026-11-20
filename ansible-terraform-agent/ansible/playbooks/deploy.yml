@@ -1,0 +1,176 @@
+---
+# Configureert alle VM's van één deployment.
+# Wordt gestart door ansible-mcp (tool configure_deployment) met:
+#   -e @/tmp/infra-agent/<deployment_id>.json
+# Die JSON bevat één variabele "deploy" (opgehaald bij infra-tf en gevalideerd):
+#   deployment_id, naam, correlation_id,
+#   vms: [{key, name, vmid, node, roles: [..], role_vars: {rol: {..}},
+#          users: [{name, ssh_public_key, sudo}]}]
+
+- name: VM's ontdekken via proxmox-mcp
+  hosts: proxmox_mcp
+  gather_facts: false
+  tasks:
+    - name: VM-configuratie ophalen
+      ansible.mcp.run_tool:
+        name: get_vm_config
+        args:
+          node: "{{ item.node }}"
+          vmid: "{{ item.vmid | string }}"
+      loop: "{{ deploy.vms }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: vm_configs
+
+    - name: Controleren dat elke VM bij deze deployment hoort (naam en tags)
+      ansible.builtin.assert:
+        that:
+          - cfg.name | default('') == item.item.name
+          - "'infra-agent' in vm_tags"
+          - deploy.deployment_id in vm_tags
+        fail_msg: "VM {{ item.item.vmid }} hoort niet bij deployment {{ deploy.deployment_id }}; configuratie geweigerd."
+        quiet: true
+      vars:
+        cfg: "{{ item.content[0].text | from_json }}"
+        vm_tags: "{{ cfg.tags | default('') | regex_findall('[^;, ]+') }}"
+      loop: "{{ vm_configs.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: IP-adres via de guest agent ophalen (wacht tot de VM opgestart is)
+      ansible.mcp.run_tool:
+        name: get_vm_ip_addresses
+        args:
+          node: "{{ item.node }}"
+          vmid: "{{ item.vmid | string }}"
+      loop: "{{ deploy.vms }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: vm_ips
+      until: >-
+        vm_ips is succeeded and
+        ((vm_ips.content | default([{}]))[0].text | default('{}') | from_json).primary_ip | default(none) is not none
+      retries: 60
+      delay: 10
+
+    - name: VM's aan de inventory toevoegen
+      ansible.builtin.add_host:
+        name: "{{ item.item.name }}"
+        groups: deployment_vms
+        ansible_host: "{{ (item.content[0].text | from_json).primary_ip }}"
+        deploy_vm_key: "{{ item.item.key }}"
+        deploy_vmid: "{{ item.item.vmid }}"
+        deploy_node: "{{ item.item.node }}"
+        deploy_roles: "{{ item.item.roles | default([]) }}"
+        deploy_role_vars: "{{ item.item.role_vars | default({}) }}"
+        deploy_users: "{{ item.item.users | default([]) }}"
+      loop: "{{ vm_ips.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    # Voorlopige samenvatting: als alle VM's falen, stopt Ansible vóór de laatste play.
+    - name: Voorlopige samenvatting (VM's en IP-adressen)
+      ansible.builtin.copy:
+        dest: "/tmp/infra-agent/{{ deploy.deployment_id }}-hosts.json"
+        mode: "0600"
+        content: >-
+          {% set out = [] -%}
+          {% for r in vm_ips.results -%}
+          {% set _ = out.append({
+               'key': r.item.key, 'name': r.item.name, 'vmid': r.item.vmid | int, 'node': r.item.node,
+               'ipv4': (r.content[0].text | from_json).primary_ip, 'configured': false
+             }) -%}
+          {% endfor -%}
+          {{ out | to_json }}
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+- name: VM's configureren
+  hosts: deployment_vms
+  gather_facts: false
+  become: true
+  vars:
+    ansible_user: infraadmin
+    ansible_ssh_private_key_file: /run/secrets/vm_ssh_key
+    # Nieuwe VM's: host key bij eerste contact aanvaarden, per deployment apart bewaren.
+    ansible_ssh_common_args: >-
+      -o StrictHostKeyChecking=accept-new
+      -o UserKnownHostsFile=/tmp/infra-agent/known_hosts_{{ deploy.deployment_id }}
+  pre_tasks:
+    - name: Wachten op SSH
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Wachten tot cloud-init klaar is
+      ansible.builtin.command: cloud-init status --wait
+      register: cloud_init
+      changed_when: false
+      # rc 2 = klaar met waarschuwingen (recoverable)
+      failed_when: cloud_init.rc not in [0, 2]
+
+    - name: Facts verzamelen
+      ansible.builtin.setup:
+
+  roles:
+    - role: base
+    - role: user_access
+      when: deploy_users | length > 0
+
+  tasks:
+    - name: Rollen van deze VM toepassen
+      ansible.builtin.include_role:
+        name: "{{ deploy_role }}"
+      vars:
+        role_vars: "{{ deploy_role_vars[deploy_role] | default({}) }}"
+      loop: "{{ deploy_roles }}"
+      loop_control:
+        loop_var: deploy_role
+
+    - name: VM als geconfigureerd markeren
+      ansible.builtin.set_fact:
+        deploy_configured: true
+
+- name: Snapshot 'baseline' nemen via proxmox-mcp
+  hosts: proxmox_mcp
+  gather_facts: false
+  tasks:
+    - name: Snapshot per geconfigureerde VM
+      ansible.mcp.run_tool:
+        name: create_snapshot
+        args:
+          node: "{{ hostvars[item].deploy_node }}"
+          vmid: "{{ hostvars[item].deploy_vmid | string }}"
+          snapname: baseline
+          description: "Toestand na configuratie van deployment {{ deploy.deployment_id }}"
+          vm_type: qemu
+      loop: "{{ groups['deployment_vms'] | default([]) }}"
+      when: hostvars[item].deploy_configured | default(false) | bool
+      register: snapshots
+      # Een bestaande snapshot 'baseline' (herhaalde run) is geen fout.
+      failed_when: >-
+        snapshots is failed and
+        not ((snapshots.msg | default('')) is search('(?i)already exists'))
+
+- name: Samenvatting voor n8n schrijven
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Hosts-samenvatting wegschrijven
+      ansible.builtin.copy:
+        dest: "/tmp/infra-agent/{{ deploy.deployment_id }}-hosts.json"
+        mode: "0600"
+        content: >-
+          {% set out = [] -%}
+          {% for h in groups['deployment_vms'] | default([]) -%}
+          {% set _ = out.append({
+               'key': hostvars[h].deploy_vm_key,
+               'name': h,
+               'vmid': hostvars[h].deploy_vmid | int,
+               'node': hostvars[h].deploy_node,
+               'ipv4': hostvars[h].ansible_host,
+               'configured': hostvars[h].deploy_configured | default(false) | bool
+             }) -%}
+          {% endfor -%}
+          {{ out | to_json }}

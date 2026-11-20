@@ -1,0 +1,19 @@
+---
+# Rooktest: kan ansible-control de MCP-server(s) bereiken?
+# Uitvoeren in de container:
+#   cd /opt/infra-agent/ansible && ansible-playbook playbooks/ping.yml
+- name: MCP-servers controleren
+  hosts: mcp_servers
+  gather_facts: false
+  tasks:
+    - name: Serverinformatie ophalen
+      ansible.mcp.server_info:
+      register: info
+
+    - name: Beschikbare tools ophalen
+      ansible.mcp.tools_info:
+      register: tools
+
+    - name: Resultaat tonen
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ tools.tools | default([]) | length }} tools beschikbaar"

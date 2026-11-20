@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="nl">
+<head><meta charset="utf-8"><title>{{ inventory_hostname }}</title></head>
+<body>
+  <h1>{{ deploy.naam | default(deploy.deployment_id) | e }}</h1>
+  <p>Deze webserver draait op <code>{{ inventory_hostname | e }}</code>.</p>
+  <p>Vervang deze pagina door je eigen inhoud in <code>/var/www/html</code>.</p>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# Lokale configuratie en geheimen
+.env
+secrets/*
+!secrets/.gitkeep

@@ -1,0 +1,84 @@
+{
+  "name": "Centrale foutafhandeling",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fd6aa199-fa5d-471b-aacc-df6aa82531f1",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Centrale foutmelding: context en verwijzing, zonder geheimen of persoonsgegevens.\nconst e = $input.first().json;\nconst exec = e.execution || {};\nconst wf = e.workflow || {};\nconst raw = String((exec.error && exec.error.message) || (e.trigger && e.trigger.error && e.trigger.error.message) || 'onbekende fout');\nconst redact = (s) => s\n  .replace(/(Bearer\\s+)[A-Za-z0-9._~+\\/=-]+/gi, '$1***')\n  .replace(/\\b(token|password|passwd|secret|api[_-]?key|authorization|approval_code)([\"'\\s:=]+)[^\\s\"',;]+/gi, '$1$2***')\n  .replace(/ssh-(ed25519|rsa) [A-Za-z0-9+\\/=]+/g, 'ssh-$1 ***')\n  .replace(/\\b[a-z][0-9]{7}\\b/gi, '<r-nummer>');\nconst text = [\n  `Workflow:     ${wf.name || '?'} (${wf.id || '?'})`,\n  `Uitvoering:   ${exec.id || '?'} (${exec.mode || '?'})`,\n  `Link:         ${exec.url || '-'}`,\n  `Laatste node: ${exec.lastNodeExecuted || '?'}`,\n  `Tijd:         ${new Date().toISOString()}`,\n  '',\n  `Fout: ${redact(raw).slice(0, 800)}`,\n].join('\\n');\nreturn [{ json: { subject: `n8n-fout: ${wf.name || 'workflow'} (${exec.lastNodeExecuted || '?'})`, text } }];"
+      },
+      "id": "d1bbaa67-02bb-4232-a594-cc7e5e889ff1",
+      "name": "Foutmelding opbouwen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "infra-agent@school.example",
+        "toEmail": "beheer@school.example",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "id": "9903223b-5fdf-4f17-90b5-7e12e1bc6f5b",
+      "name": "Beheerder verwittigen",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        440,
+        0
+      ],
+      "notes": "Credential: SMTP. Pas afzender en ontvanger aan.",
+      "notesInFlow": true,
+      "webhookId": "0182e5e8-4993-4a13-a83f-4afc5d92d149"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Foutmelding opbouwen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Foutmelding opbouwen": {
+      "main": [
+        [
+          {
+            "node": "Beheerder verwittigen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Brussels"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
