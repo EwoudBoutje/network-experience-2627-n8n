@@ -1,0 +1,483 @@
+{
+  "name": "Proxmox Agent + Dashboard live",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -288,
+        112
+      ],
+      "id": "1a8f314c-83e6-46b5-96cf-9ca8a956c9c3",
+      "name": "When chat message received",
+      "webhookId": "12d33258-fabe-4ebe-96ed-4dcbe0a7c443"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "274b1150-9516-4ec7-81d0-3bac6cc43d83",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-27b",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-27b"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -64,
+        240
+      ],
+      "id": "2a1329fe-7d6a-4e18-92f7-cf40d93b8499",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zr4WedfNzsZ4SHIx",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        80,
+        240
+      ],
+      "id": "c0841d73-4088-40ab-8e24-543a3de0d9db",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://proxmox-mcp:8000/mcp",
+        "authentication": "headerAuth",
+        "include": "selected",
+        "includeTools": [
+          "get_nodes",
+          "get_node_status",
+          "get_node_time",
+          "get_node_diagnostics",
+          "get_storage",
+          "get_node_storage",
+          "get_cluster_status",
+          "get_cluster_join_info",
+          "list_jobs",
+          "list_targets",
+          "list_bridges",
+          "get_job",
+          "get_vms",
+          "get_vm_config",
+          "get_next_vmid",
+          "get_vm_ip_addresses",
+          "get_containers",
+          "get_container_config",
+          "get_container_ip",
+          "get_node_syslog",
+          "get_task_log",
+          "get_cluster_log",
+          "get_node_firewall_log",
+          "get_guest_firewall_log",
+          "get_vm_dashboard"
+        ],
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        208,
+        240
+      ],
+      "id": "4ba1b845-fd79-4049-9aa6-86dc4de4539a",
+      "name": "MCP Client",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "suPvxL0QNC4tqAi0",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "proxmox-dashboard",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8fe6128c-259e-4445-a40a-bc94484b284b",
+      "name": "Dashboard openen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        48,
+        560
+      ],
+      "webhookId": "d4d9e865-ad21-4ac0-9e77-9208e852c3b5",
+      "notesInFlow": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      },
+      "notes": "Bestaande dashboardlogin. Gebruik de Production URL; de data wordt via een tweede webhook geladen."
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://proxmox-mcp:8000/mcp",
+        "authentication": "headerAuth",
+        "tool": {
+          "__rl": true,
+          "value": "get_vm_dashboard",
+          "mode": "list",
+          "cachedResultName": "get_vm_dashboard"
+        },
+        "inputMode": "json",
+        "jsonInput": "{\"include_guest_ips\": false}",
+        "options": {
+          "convertToBinary": false,
+          "timeout": 180000
+        }
+      },
+      "id": "75c39bdf-23ca-4451-8b9b-c4e3d45f7a51",
+      "name": "MCP - VM gegevens",
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        336,
+        912
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "suPvxL0QNC4tqAi0",
+          "name": "Header Auth account 2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Kies dezelfde MCP-credential als je werkende agent. De vooraf ingestelde Bearer Auth kun je aanpassen als je bestaande verbinding Header Auth gebruikt."
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code-node: Dashboard HTML\n// Mode: Run Once for All Items\n\nconst DATA_URL = 'http://10.20.236.220:5678/webhook/proxmox-dashboard-data';\nconst INTERVAL_SECONDS = 10;\n\n// Drempels in procenten. Je kunt CPU en RAM afzonderlijk aanpassen.\nconst CPU_WARNING = 70;\nconst CPU_HIGH = 85;\nconst RAM_WARNING = 70;\nconst RAM_HIGH = 85;\n\nconst token = $input.first().json.token;\n\nif (typeof token !== 'string' || !token) {\n  throw new Error('JWT-token ontbreekt. Controleer Dashboard sessie maken.');\n}\n\nconst settings = JSON.stringify({\n  dataUrl: DATA_URL,\n  token,\n  intervalMs: INTERVAL_SECONDS * 1000,\n  limits: {\n    cpu: [CPU_WARNING / 100, CPU_HIGH / 100],\n    ram: [RAM_WARNING / 100, RAM_HIGH / 100],\n  },\n})\n  .replace(/</g, '\\\\u003c')\n  .replace(/>/g, '\\\\u003e')\n  .replace(/&/g, '\\\\u0026');\n\n// ── 1. HTML ──────────────────────────────────────────────────────────────\n\nfunction renderDashboard() {\n  return `<!doctype html>\n<html lang=\"nl\">\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>Proxmox | VM-dashboard</title>\n    <style>${styles}</style>\n  </head>\n\n  <body>\n    <header>\n      <div class=\"wrap brand\">\n        <strong>Proxmox VE</strong>\n        <span>Infrastructuurmonitor</span>\n      </div>\n    </header>\n\n    <main class=\"wrap\">\n      <section class=\"heading\">\n        <div>\n          <p class=\"eyebrow\">Infrastructuur / Overzicht</p>\n          <h1>Virtuele machines<span>.</span></h1>\n        </div>\n        <button id=\"refresh\" type=\"button\">↻ Nu meten</button>\n      </section>\n\n      <p id=\"connection\" class=\"connection\" role=\"status\">Eerste meting ophalen…</p>\n\n      <section class=\"hero\" aria-label=\"Belasting van actieve machines\">\n        <div class=\"intro\">\n          <p class=\"eyebrow\">01 / Capaciteit</p>\n          <h2>VM-belasting</h2>\n          <p>Gebruik van de toegewezen capaciteit van actieve VM’s.</p>\n          <p id=\"fleet-summary\" class=\"hero-summary\"></p>\n        </div>\n        <div id=\"fleet-cpu\" class=\"hero-meter\"></div>\n        <div id=\"fleet-ram\" class=\"hero-meter\"></div>\n      </section>\n\n      <section class=\"grid two\" aria-label=\"Machines met de hoogste belasting\">\n        <div id=\"focus-cpu\"></div>\n        <div id=\"focus-ram\"></div>\n      </section>\n\n      <section class=\"grid two\" aria-label=\"Status en geschiedenis\">\n        <article class=\"panel\">\n          <p class=\"eyebrow\">Vlootstatus</p>\n          <h3>Beschikbaarheid</h3>\n          <div id=\"state-strip\" class=\"strip\" aria-hidden=\"true\"></div>\n          <div id=\"state-counts\" class=\"counts\"></div>\n        </article>\n        <div id=\"fleet-chart\"></div>\n      </section>\n\n      <p class=\"note\">\n        Trends tonen maximaal twintig minuten aan metingen vanaf het openen\n        van dit tabblad.\n      </p>\n\n      <section class=\"inventory\">\n        <div class=\"section-head\">\n          <div>\n            <p class=\"eyebrow\">02 / Inventaris</p>\n            <h2>Machineoverzicht</h2>\n          </div>\n\n          <div class=\"filters\">\n            <input\n              id=\"search\"\n              type=\"search\"\n              placeholder=\"Zoek VM, node of tag…\"\n              aria-label=\"Zoek op naam, VMID, node of tag\"\n            >\n            <select id=\"status-filter\" aria-label=\"Filter op VM-status\">\n              <option value=\"\">Alle statussen</option>\n              <option value=\"running\">Actief</option>\n              <option value=\"stopped\">Gestopt</option>\n              <option value=\"other\">Overig</option>\n            </select>\n            <select id=\"cpu-filter\" aria-label=\"Filter op CPU-belasting\">\n              <option value=\"\">Alle CPU-niveaus</option>\n              <option value=\"high\">Hoge CPU</option>\n              <option value=\"attention\">Verhoogde of hoge CPU</option>\n            </select>\n            <select id=\"ram-filter\" aria-label=\"Filter op RAM-gebruik\">\n              <option value=\"\">Alle RAM-niveaus</option>\n              <option value=\"high\">Hoog RAM</option>\n              <option value=\"attention\">Verhoogd of hoog RAM</option>\n            </select>\n          </div>\n        </div>\n\n        <div class=\"scroll\">\n          <table>\n            <thead>\n              <tr>\n                <th>VM</th>\n                <th>Node</th>\n                <th>Status</th>\n                <th>CPU-belasting</th>\n                <th>vCPU</th>\n                <th>RAM-gebruik</th>\n                <th>Uptime</th>\n                <th>Details</th>\n              </tr>\n            </thead>\n            <tbody id=\"rows\"></tbody>\n          </table>\n        </div>\n\n        <p id=\"table-foot\" class=\"table-foot\"></p>\n      </section>\n\n      <section id=\"details\" class=\"details\" hidden>\n        <div class=\"section-head\">\n          <div>\n            <p class=\"eyebrow\">03 / Machinedetail</p>\n            <h2 id=\"detail-title\"></h2>\n            <p id=\"detail-meta\" class=\"note\"></p>\n          </div>\n          <button id=\"back\" type=\"button\">↑ Terug naar overzicht</button>\n        </div>\n\n        <p id=\"detail-warning\" class=\"warning\" hidden></p>\n        <div id=\"detail-meters\" class=\"grid two\"></div>\n        <div id=\"detail-stats\" class=\"grid three\"></div>\n        <div id=\"detail-charts\" class=\"grid three\"></div>\n        <div id=\"detail-balances\" class=\"grid two\"></div>\n        <div id=\"detail-specs\" class=\"grid two\"></div>\n\n        <p class=\"note\">\n          Schijfcapaciteit is de waarde die Proxmox rapporteert.\n          Ze geeft niet aan hoeveel ruimte er vrij is binnen het gast-OS.\n        </p>\n      </section>\n\n      <footer>\n        <span>Proxmox VM-dashboard</span>\n        <span>Alleen lezen</span>\n      </footer>\n    </main>\n\n    <script id=\"dashboard-settings\" type=\"application/json\">${settings}</script>\n    <script>(${dashboardClient.toString()})();</script>\n  </body>\n</html>`;\n}\n\n// ── 2. CSS ───────────────────────────────────────────────────────────────\n\nconst styles = `\n  :root {\n    color-scheme: light;\n    --bg: #f5f6ef;\n    --paper: #fffefa;\n    --ink: #1b302c;\n    --muted: #566961;\n    --line: #d5dfd6;\n    --dark: #17342f;\n    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;\n    font: 15px/1.5 system-ui, -apple-system, sans-serif;\n    color: var(--ink);\n    background: var(--bg);\n  }\n\n  * { box-sizing: border-box; }\n  body, h1, h2, h3, p { margin: 0; }\n  [hidden] { display: none !important; }\n  header { border-bottom: 1px solid var(--line); }\n  .wrap { width: min(1340px, 94%); margin-inline: auto; }\n\n  .brand, .heading, .section-head, .filters, .counts, .legend,\n  .axis, .metric-label, footer {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n  }\n\n  .brand { min-height: 60px; color: var(--muted); }\n  .brand strong { color: var(--ink); font-size: 17px; }\n  .brand span { border-left: 1px solid var(--line); padding-left: 12px; }\n  .heading, .section-head, footer { justify-content: space-between; flex-wrap: wrap; }\n  .heading { margin: 30px 0 8px; }\n\n  h1 { font-size: clamp(36px, 5vw, 64px); letter-spacing: -.06em; line-height: 1.08; }\n  h1 span { color: #bd5428; }\n  h2 { font-size: clamp(23px, 3vw, 30px); letter-spacing: -.045em; }\n  h3 { font-size: 18px; letter-spacing: -.03em; }\n\n  .eyebrow {\n    font: 650 11px/1.5 var(--mono);\n    letter-spacing: .1em;\n    text-transform: uppercase;\n    color: var(--muted);\n  }\n\n  button, input, select {\n    padding: 8px 12px;\n    border: 1px solid #bdcbc1;\n    border-radius: 6px;\n    background: var(--paper);\n    color: var(--ink);\n    font: inherit;\n  }\n\n  button { cursor: pointer; }\n  button:hover { border-color: #167567; }\n  button:disabled { cursor: wait; opacity: .55; }\n  :focus-visible { outline: 3px solid #2b9384; outline-offset: 2px; }\n\n  .connection, .note, .table-foot, footer { color: var(--muted); font-size: 12px; }\n  .connection { margin: 12px 0 20px; font-family: var(--mono); }\n  .note { margin-top: 8px; }\n  .warning { color: #9b341e; }\n\n  .hero {\n    display: grid;\n    grid-template-columns: 1.1fr 1fr 1fr;\n    overflow: hidden;\n    border-radius: 12px;\n    background: var(--dark);\n    color: #f5f8ef;\n  }\n\n  .intro, .hero-meter { padding: 22px; }\n  .intro p { color: #c4d8cd; }\n  .intro h2 { margin: 5px 0; }\n  .hero-summary {\n    margin-top: 16px;\n    padding-top: 10px;\n    border-top: 1px solid #48675c;\n    font: 13px var(--mono);\n  }\n\n  .hero-meter {\n    display: grid;\n    place-items: center;\n    border-left: 1px solid #48665c;\n    background-image: radial-gradient(#99bbab35 .8px, transparent 1px);\n    background-size: 9px 9px;\n  }\n\n  .grid { display: grid; gap: 14px; margin-top: 14px; }\n  .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n  .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }\n\n  .panel, .inventory, .details {\n    min-width: 0;\n    border: 1px solid var(--line);\n    border-radius: 10px;\n    background: var(--paper);\n  }\n\n  .panel { height: 100%; padding: 17px 19px; }\n  .inventory, .details { margin-top: 24px; }\n  .inventory { overflow: hidden; }\n  .section-head, .details { padding: 20px 24px; }\n  .details .section-head { padding: 0; }\n  .details .warning { margin-top: 12px; }\n  .filters, .legend { flex-wrap: wrap; }\n  .filters { gap: 6px; }\n  .filters select, .filters input { font-size: 13px; }\n  .scroll { overflow-x: auto; }\n\n  table { width: 100%; border-collapse: collapse; text-align: left; }\n  th, td { padding: 11px 14px; white-space: nowrap; }\n  th { background: #edf2ea; color: var(--muted); font: 650 11px var(--mono); }\n  td { border-top: 1px solid #e4eae2; font-size: 14px; }\n  td small, td strong { display: block; }\n  td small { color: var(--muted); }\n  td button { padding: 4px 9px; }\n  tbody tr:hover { background: #f4f7f0; }\n  .table-foot { padding: 10px 15px; border-top: 1px solid var(--line); }\n\n  .badge {\n    padding: 4px 8px;\n    border-radius: 5px;\n    color: #4c5953;\n    background: #ebeee9;\n    font: 12px var(--mono);\n  }\n\n  .running { background: #deeee4; color: #105f4f; }\n  .normal { --tone: #18715c; --tint: #dceee6; }\n  .elevated { --tone: #945300; --tint: #ffebc7; }\n  .high { --tone: #b42318; --tint: #fbdad6; }\n  .unknown { --tone: #63706a; --tint: #e4e8e5; }\n\n  tr.hot > td:first-child {\n    box-shadow: inset 4px 0 #b42318;\n    background: #fff1ef;\n  }\n\n  .metric { min-width: 148px; }\n  .metric-label { justify-content: space-between; color: var(--tone); }\n  .metric-label strong { font: 700 13px var(--mono); }\n  .metric-label small { color: inherit; }\n  .metric-foot { margin-top: 4px; font: 11px var(--mono); }\n\n  .strip, .track {\n    display: flex;\n    overflow: hidden;\n    height: 8px;\n    border-radius: 8px;\n    background: #e1e8df;\n  }\n\n  .strip { margin: 15px 0 10px; }\n  .track { height: 6px; margin-top: 5px; background: var(--tint); }\n  .focus { border-top: 4px solid var(--tone); }\n  .focus.high { background: #fff5f3; }\n  .focus.elevated { background: #fffaf0; }\n\n  .focus-link {\n    display: block;\n    max-width: 100%;\n    margin: 7px 0 3px;\n    padding: 0;\n    border: 0;\n    background: transparent;\n    color: var(--tone);\n    font-size: 22px;\n    font-weight: 750;\n    overflow-wrap: anywhere;\n    text-align: left;\n  }\n\n  .focus-link:hover { text-decoration: underline; }\n  .focus-value { font: 650 15px var(--mono); color: var(--tone); }\n  .meter { display: flex; align-items: center; gap: 14px; }\n  .hero-meter .meter { flex-direction: column; gap: 2px; text-align: center; }\n  .meter svg { width: 96px; height: 96px; flex: none; }\n  .meter text { fill: currentColor; font: 650 16px var(--mono); }\n  .meter-caption { margin-top: 4px; font: 12px var(--mono); opacity: .84; }\n  .counts { gap: clamp(16px, 3vw, 42px); }\n  .stat strong, .counts strong { display: block; font: 650 23px var(--mono); }\n  .stat span, .counts small { color: var(--muted); }\n\n  .legend { margin: 8px 0; font: 11px var(--mono); color: var(--muted); }\n  .legend-item { display: inline-flex; align-items: center; gap: 5px; }\n  .swatch { width: 9px; height: 9px; border-radius: 2px; }\n  .chart svg { display: block; width: 100%; height: 90px; }\n  .axis { justify-content: space-between; flex-wrap: wrap; font: 11px var(--mono); color: var(--muted); }\n  .empty { margin-top: 10px; color: var(--muted); font-size: 13px; }\n\n  dl { display: grid; grid-template-columns: auto 1fr; margin: 10px 0 0; }\n  dt, dd { margin: 0; padding: 6px 0; border-top: 1px solid #e2e8df; overflow-wrap: anywhere; font-size: 13px; }\n  dd { padding-left: 10px; text-align: right; font-family: var(--mono); }\n  footer { padding: 20px 0; }\n\n  @media (max-width: 950px) {\n    .three { grid-template-columns: 1fr; }\n    .hero { grid-template-columns: 1fr 1fr; }\n    .intro { grid-column: 1 / -1; }\n    .hero-meter { border-top: 1px solid #48665c; }\n  }\n\n  @media (max-width: 640px) {\n    .two { grid-template-columns: 1fr; }\n    .intro, .hero-meter, .details, .section-head { padding: 15px; }\n    .filters input { width: min(220px, 100%); }\n  }\n`;\n\n// ── 3. JavaScript in de browser ──────────────────────────────────────────\n\nfunction dashboardClient() {\n  'use strict';\n\n  const $ = id => document.getElementById(id);\n  const cfg = JSON.parse($('dashboard-settings').textContent);\n  const seconds = cfg.intervalMs / 1000;\n  const frames = [];\n\n  let data = null;\n  let selectedId = null;\n  let accessToken = cfg.token;\n  let timer = null;\n  let busy = false;\n  let expired = false;\n\n  const valid = n => Number.isFinite(n) && n >= 0;\n  const fmt = n => n.toLocaleString('nl-BE', { maximumFractionDigits: 1 });\n  const pct = n => valid(n) ? `${fmt(n * 100)}%` : '—';\n  const clock = t => new Date(t).toLocaleTimeString('nl-BE');\n\n  const loadSeries = [\n    ['CPU', 'cpu', '#bd5428'],\n    ['RAM', 'ram', '#167567'],\n  ];\n\n  function bytes(n) {\n    if (!valid(n)) return '—';\n    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];\n    let i = 0;\n    while (n >= 1024 && i < units.length - 1) {\n      n /= 1024;\n      i++;\n    }\n    return `${fmt(n)} ${units[i]}`;\n  }\n\n  function uptime(n) {\n    if (!valid(n)) return '—';\n    return `${Math.floor(n / 86400)}d ${Math.floor(n % 86400 / 3600)}u ${Math.floor(n % 3600 / 60)}m`;\n  }\n\n  // Eén functie voor kaarten, tabel, filters en meters:\n  // zo krijgt dezelfde meting overal dezelfde kleur en hetzelfde label.\n  function level(kind, value) {\n    const [warn, high] = cfg.limits[kind];\n\n    if (!valid(value)) {\n      return { key: 'unknown', label: 'Geen meting', color: '#63706a', bright: '#acb9b0' };\n    }\n    if (value >= high) {\n      return { key: 'high', label: 'Hoog', color: '#b42318', bright: '#ff837a' };\n    }\n    if (value >= warn) {\n      return { key: 'elevated', label: 'Verhoogd', color: '#945300', bright: '#ffc267' };\n    }\n    return { key: 'normal', label: 'Normaal', color: '#18715c', bright: '#82d9ab' };\n  }\n\n  function stateLabel(s) {\n    return ({\n      running: 'Actief',\n      stopped: 'Gestopt',\n      paused: 'Gepauzeerd',\n      unknown: 'Onbekend',\n    })[s] || s;\n  }\n\n  function readVM(vm) {\n    const r = vm.runtime || {};\n    const i = vm.inventory || {};\n    const c = vm.config || {};\n    const state = r.status || i.status || 'unknown';\n    const running = state === 'running';\n    const cpu = r.cpu ?? i.cpu;\n    const mem = r.mem ?? i.mem;\n    const maxmem = r.maxmem ?? i.maxmem;\n\n    return {\n      raw: vm,\n      id: vm.vmid,\n      name: c.name || vm.name || `VM ${vm.vmid}`,\n      node: vm.node,\n      state,\n      running,\n      cpu: running && valid(cpu) ? cpu : null,\n      cpus: r.cpus ?? i.maxcpu,\n      mem,\n      maxmem,\n      ram: running && valid(mem) && valid(maxmem) && maxmem > 0\n        ? mem / maxmem\n        : null,\n      uptime: r.uptime ?? i.uptime,\n      maxdisk: r.maxdisk ?? i.maxdisk,\n      netin: r.netin ?? i.netin,\n      netout: r.netout ?? i.netout,\n      diskread: r.diskread ?? i.diskread,\n      diskwrite: r.diskwrite ?? i.diskwrite,\n    };\n  }\n\n  // Bewaar maximaal twintig minuten. Bewaar alleen de meetwaarden,\n  // niet voor iedere meting een kopie van alle VM-configuraties.\n  function remember(vms, t) {\n    const old = frames.at(-1);\n    const byId = new Map();\n    let cpuUsed = 0, cpuMax = 0, ramUsed = 0, ramMax = 0;\n\n    for (const m of vms) {\n      const prev = old?.byId.get(m.id);\n      const dt = old ? (t - old.t) / 1000 : 0;\n\n      const comparable = prev?.running && m.running\n        && prev.node === m.node\n        && dt > 0 && dt <= 120\n        && !(valid(prev.uptime) && valid(m.uptime) && m.uptime < prev.uptime);\n\n      const point = {\n        node: m.node, running: m.running, uptime: m.uptime,\n        cpu: m.cpu, ram: m.ram,\n      };\n\n      for (const k of ['netin', 'netout', 'diskread', 'diskwrite']) {\n        point[k] = m[k];\n        point[`${k}Rate`] = comparable && valid(m[k])\n          && valid(prev[k]) && m[k] >= prev[k]\n          ? (m[k] - prev[k]) / dt\n          : null;\n      }\n\n      byId.set(m.id, point);\n\n      if (valid(m.cpu) && valid(m.cpus) && m.cpus > 0) {\n        cpuUsed += m.cpu * m.cpus;\n        cpuMax += m.cpus;\n      }\n      if (valid(m.ram)) {\n        ramUsed += m.mem;\n        ramMax += m.maxmem;\n      }\n    }\n\n    frames.push({\n      t, byId, cpuUsed, cpuMax, ramUsed, ramMax,\n      cpu: cpuMax ? cpuUsed / cpuMax : null,\n      ram: ramMax ? ramUsed / ramMax : null,\n    });\n\n    while (frames.length > 1 && frames[0].t < t - 20 * 60_000) {\n      frames.shift();\n    }\n  }\n\n  // ── Herbruikbare UI-elementen ──\n\n  function el(tag, text, cls) {\n    const e = document.createElement(tag);\n    if (text != null) e.textContent = String(text);\n    if (cls) e.className = cls;\n    return e;\n  }\n\n  function svg(tag, attrs) {\n    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);\n    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));\n    return e;\n  }\n\n  function button(label, action, cls) {\n    const b = el('button', label, cls);\n    b.type = 'button';\n    b.onclick = action;\n    return b;\n  }\n\n  function openVM(id) {\n    selectedId = id;\n    renderDetail();\n    $('details').scrollIntoView({ behavior: 'smooth', block: 'start' });\n  }\n\n  function segment(value, color) {\n    const part = el('span');\n    part.style.width = `${100 * Math.max(0, Math.min(1, value))}%`;\n    part.style.background = color;\n    return part;\n  }\n\n  function metricCell(kind, value, foot) {\n    const l = level(kind, value);\n    const cell = el('td', null, `metric ${l.key}`);\n    const label = el('div', null, 'metric-label');\n    const track = el('div', null, 'track');\n\n    label.append(el('strong', pct(value)), el('small', l.label));\n    track.setAttribute('aria-hidden', 'true');\n    track.append(segment(valid(value) ? value : 0, l.color));\n\n    cell.append(label, track);\n    if (foot) cell.append(el('small', foot, 'metric-foot'));\n    return cell;\n  }\n\n  function meter(kind, value, caption, dark = false) {\n    const l = level(kind, value);\n    const name = kind === 'cpu' ? 'Processor' : 'Geheugen';\n    const box = el('article', null, dark ? 'meter' : 'panel meter');\n\n    const g = svg('svg', {\n      viewBox: '0 0 108 108',\n      role: 'img',\n      'aria-label': `${name}: ${pct(value)}, ${l.label}`,\n    });\n\n    const ring = {\n      cx: 54, cy: 54, r: 44, fill: 'none',\n      'stroke-width': 8, pathLength: 100, transform: 'rotate(-90 54 54)',\n    };\n\n    g.append(svg('circle', { ...ring, stroke: dark ? '#45675c' : '#dce5dc' }));\n\n    if (valid(value) && value > 0) {\n      g.append(svg('circle', {\n        ...ring,\n        stroke: dark ? l.bright : l.color,\n        'stroke-dasharray': `${Math.min(100, value * 100)} 100`,\n      }));\n    }\n\n    const text = svg('text', { x: 54, y: 59, 'text-anchor': 'middle' });\n    text.textContent = pct(value);\n    g.append(text);\n\n    const desc = el('div');\n    desc.append(el('h3', name), el('p', `${l.label} · ${caption}`, 'meter-caption'));\n    box.append(g, desc);\n    return box;\n  }\n\n  function stat(label, value) {\n    const box = el('article', null, 'panel stat');\n    box.append(el('span', label), el('strong', value ?? '—'));\n    return box;\n  }\n\n  function specs(title, rows, empty = 'Geen gegevens beschikbaar.') {\n    const box = el('article', null, 'panel');\n    const dl = el('dl');\n\n    for (const [key, value] of rows) {\n      if (value != null && value !== '') dl.append(el('dt', key), el('dd', value));\n    }\n\n    box.append(el('h3', title), dl.childElementCount ? dl : el('p', empty, 'note'));\n    return box;\n  }\n\n  function balance(title, aName, bName, a, b, color) {\n    const box = el('article', null, 'panel');\n    const strip = el('div', null, 'strip');\n    const axis = el('div', null, 'axis');\n    const total = valid(a) && valid(b) ? a + b : null;\n\n    if (total > 0) strip.append(segment(a / total, color), segment(b / total, '#75609d'));\n\n    axis.append(\n      el('span', `${aName}: ${total > 0 ? pct(a / total) : '—'}`),\n      el('span', `${bName}: ${total > 0 ? pct(b / total) : '—'}`),\n    );\n\n    const note = total === null ? 'Wachten op vergelijkbare metingen.'\n      : total === 0 ? 'Geen activiteit tijdens dit meetinterval.'\n      : 'Verdeling over het laatste meetinterval.';\n\n    box.append(el('h3', title), strip, axis, el('p', note, 'note'));\n    return box;\n  }\n\n  function chart(title, series, type, id = null) {\n    const box = el('article', null, 'panel chart');\n    const legend = el('div', null, 'legend');\n    const format = v => !valid(v) ? '—' : type === 'pct' ? pct(v) : `${bytes(v)}/s`;\n\n    const lines = series.map(([, key]) => frames.map(f => {\n      const point = id === null ? f : f.byId.get(id);\n      return point?.[key] ?? null;\n    }));\n\n    series.forEach(([label, , color], j) => {\n      const item = el('span', null, 'legend-item');\n      const dot = el('i', null, 'swatch');\n      dot.style.background = color;\n      item.append(dot, el('span', `${label}: ${format(lines[j].at(-1))}`));\n      legend.append(item);\n    });\n\n    box.append(el('h3', title), legend);\n\n    if (!lines.some(line => line.filter(valid).length >= 2)) {\n      box.append(el('p', 'Nog te weinig meetpunten voor een grafiek.', 'empty'));\n      return box;\n    }\n\n    const first = frames[0].t;\n    const last = frames.at(-1).t;\n    const peak = Math.max(...lines.flat().filter(valid));\n    const max = type === 'pct' ? Math.max(1, peak) : Math.max(1, peak * 1.1);\n    const x = i => 6 + 508 * (frames[i].t - first) / (last - first);\n    const y = v => 84 - 78 * v / max;\n\n    const g = svg('svg', {\n      viewBox: '0 0 520 90',\n      role: 'img',\n      'aria-label': `${title}, van ${clock(first)} tot ${clock(last)}`,\n    });\n\n    for (const f of [0, 0.5, 1]) {\n      g.append(svg('line', {\n        x1: 6, x2: 514, y1: y(max * f), y2: y(max * f),\n        stroke: '#d4dfd5', 'stroke-dasharray': '3 5',\n      }));\n    }\n\n    lines.forEach((line, j) => {\n      let path = '';\n      const color = series[j][2];\n\n      line.forEach((v, i) => {\n        if (!valid(v)) return;\n        const linked = i > 0 && valid(line[i - 1]) && frames[i].t - frames[i - 1].t <= 120_000;\n        path += `${linked ? 'L' : 'M'}${x(i)} ${y(v)} `;\n\n        if (!linked || i === line.length - 1 || !valid(line[i + 1])) {\n          g.append(svg('circle', { cx: x(i), cy: y(v), r: 2.5, fill: color }));\n        }\n      });\n\n      g.append(svg('path', {\n        d: path, fill: 'none', stroke: color, 'stroke-width': 2.5,\n        'stroke-linejoin': 'round', 'stroke-dasharray': j ? '6 3' : 'none',\n      }));\n    });\n\n    const axis = el('div', null, 'axis');\n    axis.append(el('span', clock(first)), el('span', `0 – ${format(max)}`), el('span', clock(last)));\n    box.append(g, axis);\n    return box;\n  }\n\n  // ── Vlootoverzicht en waarschuwingen ──\n\n  function focusCard(kind, vms) {\n    const title = kind === 'cpu' ? 'Hoogste CPU-belasting' : 'Hoogste RAM-gebruik';\n    const measured = vms.filter(m => valid(m[kind]));\n    const top = measured.reduce((best, m) => !best || m[kind] > best[kind] ? m : best, null);\n    const l = level(kind, top?.[kind]);\n    const box = el('article', null, `panel focus ${l.key}`);\n\n    box.append(el('p', `${kind.toUpperCase()} / Aandacht`, 'eyebrow'), el('h3', title));\n\n    if (!top) {\n      box.append(el('p', 'Geen actieve VM met een geldige meting.', 'empty'));\n      return box;\n    }\n\n    const high = measured.filter(m => level(kind, m[kind]).key === 'high').length;\n    const elevated = measured.filter(m => level(kind, m[kind]).key === 'elevated').length;\n    const capacity = kind === 'ram' ? ` · ${bytes(top.mem)} / ${bytes(top.maxmem)}` : '';\n\n    box.append(\n      button(top.name, () => openVM(top.id), 'focus-link'),\n      el('p', `${pct(top[kind])} · ${l.label}${capacity}`, 'focus-value'),\n      el('p', `VM ${top.id} · ${top.node}`, 'note'),\n      el('p', `${high} hoog · ${elevated} verhoogd · ${measured.length} gemeten`, 'note'),\n    );\n\n    return box;\n  }\n\n  function renderOverview() {\n    const vms = data?.vms || [];\n    const frame = frames.at(-1);\n    const active = vms.filter(m => m.running).length;\n    const stopped = vms.filter(m => m.state === 'stopped').length;\n\n    $('fleet-summary').textContent = data\n      ? `${active} actief · ${stopped} gestopt · ${vms.length} totaal`\n      : 'Wachten op meting…';\n\n    $('fleet-cpu').replaceChildren(meter(\n      'cpu', frame?.cpu,\n      frame?.cpuMax ? `${fmt(frame.cpuUsed)} / ${fmt(frame.cpuMax)} vCPU` : '— vCPU',\n      true,\n    ));\n\n    $('fleet-ram').replaceChildren(meter(\n      'ram', frame?.ram,\n      frame?.ramMax ? `${bytes(frame.ramUsed)} / ${bytes(frame.ramMax)}` : '— / —',\n      true,\n    ));\n\n    $('focus-cpu').replaceChildren(focusCard('cpu', vms));\n    $('focus-ram').replaceChildren(focusCard('ram', vms));\n    $('fleet-chart').replaceChildren(chart('Belasting door de tijd', loadSeries, 'pct'));\n\n    const strip = $('state-strip');\n    const labels = $('state-counts');\n    strip.replaceChildren();\n    labels.replaceChildren();\n\n    for (const [label, count, color] of [\n      ['Actief', active, '#237966'],\n      ['Gestopt', stopped, '#96a7b1'],\n      ['Overig', vms.length - active - stopped, '#d89761'],\n    ]) {\n      const item = el('div');\n      item.append(el('strong', data ? count : '—'), el('small', label));\n      labels.append(item);\n      strip.append(segment(vms.length ? count / vms.length : 0, color));\n    }\n  }\n\n  function matchesLevel(filter, key) {\n    if (!filter) return true;\n    if (filter === 'high') return key === 'high';\n    return key === 'high' || key === 'elevated';\n  }\n\n  function renderTable() {\n    const vms = data?.vms || [];\n    const q = $('search').value.trim().toLowerCase();\n    const status = $('status-filter').value;\n    const cpuFilter = $('cpu-filter').value;\n    const ramFilter = $('ram-filter').value;\n    const rows = $('rows');\n    rows.replaceChildren();\n\n    let visible = 0;\n\n    for (const m of vms) {\n      const cpu = level('cpu', m.cpu).key;\n      const ram = level('ram', m.ram).key;\n      const searchable = [m.id, m.name, m.node, m.raw.config?.tags].join(' ').toLowerCase();\n\n      if (!searchable.includes(q)) continue;\n      if (status === 'other' && ['running', 'stopped'].includes(m.state)) continue;\n      if (status && status !== 'other' && m.state !== status) continue;\n      if (!matchesLevel(cpuFilter, cpu) || !matchesLevel(ramFilter, ram)) continue;\n\n      visible++;\n      const tr = el('tr', null, cpu === 'high' || ram === 'high' ? 'hot' : '');\n      const identity = el('td');\n      const state = el('td');\n      const action = el('td');\n      const show = button('Bekijken', () => openVM(m.id));\n\n      show.setAttribute('aria-label', `Bekijk details van ${m.name}`);\n      identity.append(el('small', `VM ${m.id}`), el('strong', m.name));\n      state.append(el('span', stateLabel(m.state), m.running ? 'badge running' : 'badge'));\n      action.append(show);\n\n      const ramFoot = m.running\n        ? `${bytes(m.mem)} / ${bytes(m.maxmem)}`\n        : `Toegewezen: ${bytes(m.maxmem)}`;\n\n      tr.append(\n        identity,\n        el('td', m.node),\n        state,\n        metricCell('cpu', m.cpu),\n        el('td', m.cpus ?? '—'),\n        metricCell('ram', m.ram, ramFoot),\n        el('td', m.running ? uptime(m.uptime) : '—'),\n        action,\n      );\n\n      rows.append(tr);\n    }\n\n    if (!visible) {\n      const tr = el('tr');\n      const cell = el('td', data ? 'Geen VM’s die aan deze filters voldoen.' : 'Wachten op meting…');\n      cell.colSpan = 8;\n      tr.append(cell);\n      rows.append(tr);\n    }\n\n    const thresholds = ['cpu', 'ram'].map(kind => {\n      const [warn, high] = cfg.limits[kind];\n      return `${kind.toUpperCase()}: oranje ≥ ${pct(warn)}, rood ≥ ${pct(high)}`;\n    });\n\n    $('table-foot').textContent = data\n      ? `${visible} van ${vms.length} zichtbaar · ${thresholds.join(' · ')}`\n      : 'Nog geen geslaagde meting.';\n  }\n\n  // ── Details van één VM ──\n\n  function renderDetail() {\n    const m = data?.vms.find(vm => vm.id === selectedId);\n    $('details').hidden = !m;\n    if (!m) return;\n\n    const vm = m.raw;\n    const c = vm.config || {};\n    const latest = frames.at(-1)?.byId.get(m.id) || {};\n    const errors = Object.keys(vm.errors || {});\n\n    $('detail-title').textContent = m.name;\n    $('detail-meta').textContent = `VM ${m.id} / ${m.node} / ${stateLabel(m.state)}`;\n    $('detail-warning').hidden = errors.length === 0;\n    $('detail-warning').textContent = `Niet opgehaald: ${errors.join(', ')}.`;\n\n    $('detail-meters').replaceChildren(\n      meter('cpu', m.cpu, `${m.cpus ?? '—'} vCPU toegewezen`),\n      meter('ram', m.ram, m.running\n        ? `${bytes(m.mem)} van ${bytes(m.maxmem)}`\n        : `${bytes(m.maxmem)} toegewezen`),\n    );\n\n    const snaps = Array.isArray(vm.snapshots)\n      ? vm.snapshots.filter(s => s.name !== 'current')\n      : null;\n\n    $('detail-stats').replaceChildren(\n      stat('Uptime', m.running ? uptime(m.uptime) : '—'),\n      stat('Schijfcapaciteit', bytes(m.maxdisk)),\n      stat('Snapshots', snaps?.length ?? '—'),\n    );\n\n    $('detail-charts').replaceChildren(\n      chart('CPU & RAM', loadSeries, 'pct', m.id),\n      chart('Netwerkverkeer', [\n        ['Ontvangen', 'netinRate', '#167567'],\n        ['Verzonden', 'netoutRate', '#75609d'],\n      ], 'rate', m.id),\n      chart('Schijfactiviteit', [\n        ['Lezen', 'diskreadRate', '#bd5428'],\n        ['Schrijven', 'diskwriteRate', '#75609d'],\n      ], 'rate', m.id),\n    );\n\n    $('detail-balances').replaceChildren(\n      balance('Netwerkbalans', 'Ontvangen', 'Verzonden', latest.netinRate, latest.netoutRate, '#167567'),\n      balance('Schijfbalans', 'Lezen', 'Schrijven', latest.diskreadRate, latest.diskwriteRate, '#bd5428'),\n    );\n\n    const disks = [];\n    const adapters = [];\n\n    for (const [key, value] of Object.entries(c)) {\n      if (typeof value !== 'string') continue;\n      const parts = value.split(',');\n      const option = k => parts.find(p => p.startsWith(`${k}=`))?.slice(k.length + 1);\n\n      if (/^(scsi|sata|ide|virtio)\\d+$/.test(key)) {\n        disks.push([key, [parts[0], option('size'), option('media')].filter(Boolean).join(' · ')]);\n      }\n\n      if (/^net\\d+$/.test(key)) {\n        const vlan = option('tag');\n        adapters.push([key, [\n          parts[0], option('bridge'), vlan ? `VLAN ${vlan}` : null,\n        ].filter(Boolean).join(' · ')]);\n      }\n    }\n\n    const interfaces = vm.guest_network?.result ?? vm.guest_network;\n    const ips = Array.isArray(interfaces) ? interfaces.map(item => [\n      item.name,\n      (item['ip-addresses'] || []).map(a => a['ip-address']).filter(Boolean).join(' · '),\n    ]) : [];\n\n    const snapshotRows = (snaps || []).map(s => [\n      s.name,\n      [\n        s.snaptime ? new Date(s.snaptime * 1000).toLocaleString('nl-BE') : null,\n        s.description,\n      ].filter(Boolean).join(' · ') || 'Snapshot',\n    ]);\n\n    $('detail-specs').replaceChildren(\n      specs('Hardware & opstart', [\n        ['CPU-model', c.cpu],\n        ['Sockets', c.sockets],\n        ['Cores per socket', c.cores],\n        ['Besturingssysteem', c.ostype],\n        ['BIOS', c.bios],\n        ['Machinetype', c.machine],\n        ['Bootvolgorde', c.boot],\n        ['Start bij opstart', c.onboot == null ? null : Number(c.onboot) ? 'Ja' : 'Nee'],\n        ['Tags', c.tags],\n      ]),\n      specs('I/O sinds tellerstart', [\n        ['Ontvangen', bytes(m.netin)],\n        ['Verzonden', bytes(m.netout)],\n        ['Gelezen', bytes(m.diskread)],\n        ['Geschreven', bytes(m.diskwrite)],\n      ]),\n      specs('Virtuele schijven', disks),\n      specs('Netwerkadapters', adapters),\n      specs('IP-adressen van de gast', ips),\n      specs('Snapshots', snapshotRows, snaps ? 'Geen snapshots.' : 'Niet beschikbaar.'),\n    );\n  }\n\n  // ── Automatisch ophalen ──\n\n  function render() {\n    renderOverview();\n    renderTable();\n    renderDetail();\n  }\n\n  async function update() {\n    if (busy || expired) return;\n\n    busy = true;\n    clearTimeout(timer);\n    $('refresh').disabled = true;\n\n    try {\n      const response = await fetch(cfg.dataUrl, {\n        method: 'GET',\n        mode: 'cors',\n        credentials: 'omit',\n        cache: 'no-store',\n        headers: {\n          Authorization: `Bearer ${accessToken}`,\n          Accept: 'application/json',\n        },\n        signal: AbortSignal.timeout(180_000),\n      });\n\n      if (response.status === 401 || response.status === 403) {\n        expired = true;\n        throw new Error('Dashboardsessie verlopen of geweigerd. Open de pagina opnieuw.');\n      }\n\n      if (!response.ok) throw new Error(`Ophalen mislukt: HTTP ${response.status}.`);\n\n      const body = await response.json();\n\n      if (\n        body?.data?.schema_version !== 1 ||\n        !Array.isArray(body.data.vms) ||\n        typeof body.token !== 'string' ||\n        !body.token\n      ) {\n        throw new Error('Onverwachte data-uitvoer. Controleer de n8n-uitvoering.');\n      }\n\n      accessToken = body.token;\n      const t = Date.parse(body.data.sampled_at);\n      if (!Number.isFinite(t)) throw new Error('De meting heeft geen geldige tijdstempel.');\n\n      if (!data || t > data.t) {\n        const vms = body.data.vms.map(readVM);\n        remember(vms, t);\n        data = { t, vms };\n        render();\n      }\n\n      $('connection').className = 'connection';\n      $('connection').textContent =\n        `Laatste meting: ${clock(data.t)} · Volgende aanvraag over ${seconds} seconden.`;\n    } catch (error) {\n      const reason = error instanceof TypeError\n        ? 'Data-endpoint niet bereikbaar. Controleer de data-URL en CORS.'\n        : error.message;\n\n      const last = data ? ` Laatste geslaagde meting: ${clock(data.t)}.` : '';\n      const retry = expired ? '' : ` Nieuwe poging over ${seconds} seconden.`;\n\n      $('connection').className = 'connection warning';\n      $('connection').textContent = reason + last + retry;\n    } finally {\n      busy = false;\n      $('refresh').disabled = expired;\n      if (!expired) timer = setTimeout(update, cfg.intervalMs);\n    }\n  }\n\n  $('refresh').onclick = update;\n  $('search').oninput = renderTable;\n\n  for (const id of ['status-filter', 'cpu-filter', 'ram-filter']) {\n    $(id).onchange = renderTable;\n  }\n\n  $('back').onclick = () => {\n    selectedId = null;\n    renderDetail();\n    $('search').focus();\n  };\n\n  render();\n  update();\n}\n\n// ── 4. Antwoord voor Dashboard tonen ────────────────────────────────────\n\nreturn [{\n  json: {\n    html: renderDashboard(),\n    responseCode: 200,\n  },\n}];"
+      },
+      "id": "c00e790a-4332-463e-bad6-324740989201",
+      "name": "Dashboard HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        560
+      ],
+      "notesInFlow": true,
+      "notes": "Pas alleen DATA_URL bovenaan aan: volledige Production URL van Dashboard data ophalen, bereikbaar vanaf je laptop."
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": "={{ $json.responseCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e7ec8f0e-d97c-4fb8-b3fa-b6ea40cf78d3",
+      "name": "Dashboard tonen",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        896,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "useJson": true,
+        "claimsJson": "={{ JSON.stringify({sub: 'proxmox-dashboard', scope: 'vm:read', iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+900}) }}",
+        "options": {}
+      },
+      "id": "b4f4eb14-b6bc-404b-9d0a-4f3f101a2ad4",
+      "name": "Dashboard sessie maken",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        336,
+        560
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "jwtAuth": {
+          "id": "6l7wipRa5uBgYUsT",
+          "name": "JWT Auth account"
+        }
+      },
+      "notes": "Selecteer dezelfde NIEUWE JWT-credential als op Dashboard data ophalen. Key Type: Passphrase; Algorithm: HS256; uniek geheim van 32 willekeurige bytes."
+    },
+    {
+      "parameters": {
+        "path": "proxmox-dashboard-data",
+        "authentication": "jwtAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "e0b6e0a4-b85e-4845-bd37-93a3a0f6f046",
+      "name": "Dashboard data ophalen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        48,
+        912
+      ],
+      "webhookId": "5f415ca1-b5c3-475b-86a3-c14b4d94414f",
+      "notesInFlow": true,
+      "credentials": {
+        "jwtAuth": {
+          "id": "6l7wipRa5uBgYUsT",
+          "name": "JWT Auth account"
+        }
+      },
+      "notes": "JWT Auth: kies de nieuwe dashboard-JWT-credential. Dezelfde op beide sessie-nodes. CORS staat open voor sandboxed iframe; iedere data-aanvraag vereist een geldig token."
+    },
+    {
+      "parameters": {
+        "useJson": true,
+        "claimsJson": "={{ JSON.stringify({sub: 'proxmox-dashboard', scope: 'vm:read', iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+900}) }}",
+        "options": {}
+      },
+      "id": "0253ad28-6e64-4488-86f3-a35d2101f342",
+      "name": "Dashboard sessie vernieuwen",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        608,
+        912
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "jwtAuth": {
+          "id": "6l7wipRa5uBgYUsT",
+          "name": "JWT Auth account"
+        }
+      },
+      "notes": "Selecteer dezelfde NIEUWE JWT-credential als op Dashboard data ophalen. Key Type: Passphrase; Algorithm: HS256; uniek geheim van 32 willekeurige bytes."
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node: JavaScript, Run Once for All Items.\n// Herkent de gestructureerde MCP-uitvoer en JSON in MCP-tekstblokken.\nfunction decode(value, depth = 0) {\n  if (depth > 10 || value == null) return null;\n  if (typeof value === 'string') {\n    try { return decode(JSON.parse(value), depth + 1); } catch { return null; }\n  }\n  if (typeof value !== 'object' || value.isError === true || value.error) return null;\n  if (Array.isArray(value)) {\n    for (const child of value) { const found = decode(child, depth + 1); if (found) return found; }\n    return null;\n  }\n  if (value.schema_version === 1 && Array.isArray(value.vms)) return value;\n  for (const key of ['structuredContent', 'content', 'text', 'result', 'data', 'output']) {\n    const found = decode(value[key], depth + 1); if (found) return found;\n  }\n  return null;\n}\nlet data = null;\nfor (const item of $('MCP - VM gegevens').all()) { data = decode(item.json); if (data) break; }\nif (data) {\n  // Valideer het verwachte schema; onbekende structuren worden niet als leeg cluster getoond.\n  const valid = typeof data.sampled_at === 'string' && Number.isFinite(Date.parse(data.sampled_at)) &&\n    data.vms.every(v => v && typeof v === 'object' && Number.isInteger(v.vmid) && typeof v.node === 'string' &&\n      ['runtime','config','inventory','errors'].every(k => v[k] == null || (typeof v[k] === 'object' && !Array.isArray(v[k]))));\n  if (!valid) data = null;\n  else data = {schema_version:1, sampled_at:data.sampled_at, vms:data.vms.map(v => ({\n    vmid:v.vmid, node:v.node, name:v.name, inventory:v.inventory || {}, runtime:v.runtime || null,\n    config:v.config || null, snapshots:v.snapshots ?? null, guest_network:v.guest_network ?? null, errors:v.errors || {}\n  }))};\n}\n\nconst token = $input.first().json.token;\nreturn [{json: {responseCode:data ? 200 : 502, body:data ? {data, token} : {error:'VM-gegevens konden niet worden opgehaald. Controleer MCP - VM gegevens in n8n.'}}}];\n"
+      },
+      "id": "6aa30e40-ccb4-41e0-a5bf-61c1ec073aaf",
+      "name": "Dashboard JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.responseCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      },
+      "id": "7e66a632-2eaf-43c5-b1c6-265af1d17059",
+      "name": "Dashboard data tonen",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1168,
+        912
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard openen": {
+      "main": [
+        [
+          {
+            "node": "Dashboard sessie maken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP - VM gegevens": {
+      "main": [
+        [
+          {
+            "node": "Dashboard sessie vernieuwen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard HTML": {
+      "main": [
+        [
+          {
+            "node": "Dashboard tonen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard sessie maken": {
+      "main": [
+        [
+          {
+            "node": "Dashboard HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard data ophalen": {
+      "main": [
+        [
+          {
+            "node": "MCP - VM gegevens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard sessie vernieuwen": {
+      "main": [
+        [
+          {
+            "node": "Dashboard JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard JSON": {
+      "main": [
+        [
+          {
+            "node": "Dashboard data tonen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "71898081-6260-4a05-ab73-b0eed5db3ec2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9cf5af73bc08752877f386ad2f15a2b73065b214d1c0cc4cee615a7b93dbea3"
+  },
+  "nodeGroups": [],
+  "id": "rPHoyjHT8VE5CtbW",
+  "tags": []
+}
