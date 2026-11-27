@@ -1,0 +1,184 @@
+{
+  "updatedAt": "2026-10-30T14:17:23.578Z",
+  "createdAt": "2026-10-30T12:32:02.548Z",
+  "id": "UVce08UmjcZaeOje",
+  "name": "Proxmox VM Dashboard - toevoegen aan bestaande workflow",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "proxmox-dashboard",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "72a5a5e7-5348-4297-a9f1-7d0341e3fb9c",
+      "name": "Dashboard openen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "d4d9e865-ad21-4ac0-9e77-9208e852c3b5",
+      "notesInFlow": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      },
+      "notes": "Kies een HTTP Basic Auth credential voor toegang tot het dashboard. Gebruik de Production URL op je laptop."
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://proxmox-mcp:8000/mcp",
+        "authentication": "bearerAuth",
+        "tool": {
+          "__rl": true,
+          "value": "get_vm_dashboard",
+          "mode": "id"
+        },
+        "inputMode": "json",
+        "jsonInput": "{\"include_guest_ips\": false}",
+        "options": {
+          "convertToBinary": false,
+          "timeout": 180000
+        }
+      },
+      "id": "fc534967-874f-4b06-bb3e-e6e6459b1e19",
+      "name": "MCP - VM gegevens",
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        288,
+        160
+      ],
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "Kies dezelfde MCP-credential als je werkende agent. De vooraf ingestelde Bearer Auth kun je aanpassen als je bestaande verbinding Header Auth gebruikt."
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node: JavaScript, Run Once for All Items.\n// Herkent de gestructureerde MCP-uitvoer en JSON in MCP-tekstblokken.\nfunction decode(value, depth = 0) {\n  if (depth > 10 || value == null) return null;\n  if (typeof value === 'string') {\n    try { return decode(JSON.parse(value), depth + 1); } catch { return null; }\n  }\n  if (typeof value !== 'object' || value.isError === true || value.error) return null;\n  if (Array.isArray(value)) {\n    for (const child of value) { const found = decode(child, depth + 1); if (found) return found; }\n    return null;\n  }\n  if (value.schema_version === 1 && Array.isArray(value.vms)) return value;\n  for (const key of ['structuredContent', 'content', 'text', 'result', 'data', 'output']) {\n    const found = decode(value[key], depth + 1); if (found) return found;\n  }\n  return null;\n}\nlet data = null;\nfor (const item of $input.all()) { data = decode(item.json); if (data) break; }\nif (data) {\n  // Valideer het verwachte schema; onbekende structuren worden niet als leeg cluster getoond.\n  const valid = typeof data.sampled_at === 'string' && Number.isFinite(Date.parse(data.sampled_at)) &&\n    data.vms.every(v => v && typeof v === 'object' && Number.isInteger(v.vmid) && typeof v.node === 'string' &&\n      ['runtime','config','inventory','errors'].every(k => v[k] == null || (typeof v[k] === 'object' && !Array.isArray(v[k]))));\n  if (!valid) data = null;\n  else data = {schema_version:1, sampled_at:data.sampled_at, vms:data.vms.map(v => ({\n    vmid:v.vmid, node:v.node, name:v.name, inventory:v.inventory || {}, runtime:v.runtime || null,\n    config:v.config || null, snapshots:v.snapshots ?? null, guest_network:v.guest_network ?? null, errors:v.errors || {}\n  }))};\n}\n// Voorkom dat een VM-naam of beschrijving een HTML-scriptblok kan afsluiten.\nconst payload = JSON.stringify(data).replace(/</g, '\\\\u003c').replace(/>/g, '\\\\u003e').replace(/&/g, '\\\\u0026').replace(/\\u2028/g, '\\\\u2028').replace(/\\u2029/g, '\\\\u2029');\nconst template = \"<!doctype html>\\n<html lang=\\\"nl\\\"><head><meta charset=\\\"utf-8\\\"><meta name=\\\"viewport\\\" content=\\\"width=device-width,initial-scale=1\\\"><title>VM Monitor</title><style>:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0d1420;color:#e7edf6}*{box-sizing:border-box}body{margin:0}main{max-width:1450px;margin:auto;padding:36px 28px}header,.toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}h1{font-size:36px;letter-spacing:-1px;margin:8px 0}h2{font-size:21px}p,footer{color:#a7b5c9}.eyebrow{font-size:12px;letter-spacing:2px;color:#5ee1bc}button,input,select{font:inherit;border:1px solid #35465d;border-radius:9px;background:#172438;color:#e7edf6;padding:11px 15px}button{cursor:pointer}button:hover{border-color:#5ee1bc}input{min-width:270px}button:focus-visible,input:focus,select:focus{outline:2px solid #5ee1bc}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,.panel{background:#131f30;border:1px solid #29394e;border-radius:14px;padding:21px}.card span{display:block;color:#9fb0c5;font-size:13px}.card strong{display:block;font-size:25px;margin-top:9px}.panel{margin:20px 0}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}td,th{padding:17px 12px;border-bottom:1px solid #29394e;white-space:nowrap}th{font-size:12px;color:#9fb0c5}td small{display:block;color:#9fb0c5;margin-top:4px}.badge{padding:4px 8px;border-radius:6px;background:#26374d}.running{color:#65e2b9;background:#173d36}.warning{color:#ffd17f!important}details{border-top:1px solid #29394e;padding:16px 0}summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d1420;padding:18px;border-radius:8px;font-size:13px;max-height:480px;overflow:auto}footer{font-size:12px;line-height:1.7;margin:24px 0}@media(max-width:650px){main{padding:20px 12px}.panel{padding:14px}h1{font-size:29px}}\\n</style></head>\\n<body><main><header><div><p class=\\\"eyebrow\\\">PROXMOX · ALLEEN LEZEN</p><h1>VM Monitor</h1><p>Capaciteit, gebruik en configuratie op één plek.</p></div><p>Nieuwe meting: vernieuw deze browserpagina.</p></header>\\n<p id=\\\"connection\\\" role=\\\"status\\\">Eerste meting ophalen…</p><section id=\\\"cards\\\" class=\\\"cards\\\"></section>\\n<section class=\\\"panel\\\"><div class=\\\"toolbar\\\"><h2>Virtuele machines</h2><input id=\\\"search\\\" placeholder=\\\"Zoek naam, VMID, node of tag\\\" aria-label=\\\"Zoeken\\\"><select id=\\\"status\\\" aria-label=\\\"Status\\\"><option value=\\\"\\\">Alle statussen</option><option value=\\\"running\\\">Actief</option><option value=\\\"stopped\\\">Gestopt</option></select></div>\\n<div class=\\\"scroll\\\"><table><thead><tr><th>VMID / naam</th><th>Node</th><th>Status</th><th>CPU-gebruik</th><th>vCPU</th><th>RAM gebruikt / max.</th><th>Uptime</th><th>Details</th></tr></thead><tbody id=\\\"rows\\\"></tbody></table></div></section>\\n<section id=\\\"details\\\" class=\\\"panel\\\" hidden><h2 id=\\\"detail-title\\\"></h2><p id=\\\"detail-errors\\\"></p><div id=\\\"metrics\\\" class=\\\"cards\\\"></div><div id=\\\"sections\\\"></div></section>\\n<footer>Nieuwe meting bij iedere pagina-aanvraag. Laatste meetmoment staat bovenaan. Netwerk- en schijftellers zijn cumulatief, geen snelheid. Geen historische opslag.</footer></main><script type=\\\"application/json\\\" id=\\\"vm-data\\\">__VM_DATA_PAYLOAD__</script><script>let data = JSON.parse(document.getElementById(\\\"vm-data\\\").textContent), selected = null;\\nconst $ = id => document.getElementById(id);\\nconst num = v => typeof v === 'number' && Number.isFinite(v);\\nfunction bytes(n) { if(!num(n)) return 'Niet beschikbaar'; const units=['B','KiB','MiB','GiB','TiB']; let i=0; while(Math.abs(n)>=1024 && i<4){n/=1024;i++} return n.toLocaleString('nl-BE',{maximumFractionDigits:1})+' '+units[i]; }\\nfunction percent(n){return num(n)?(n*100).toLocaleString('nl-BE',{maximumFractionDigits:1})+'%':'—'}\\nfunction uptime(n){if(!num(n))return '—';return Math.floor(n/86400)+'d '+Math.floor(n%86400/3600)+'u '+Math.floor(n%3600/60)+'m'}\\nfunction el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}\\nfunction card(label,value){const e=el('article',undefined,'card');e.append(el('span',label),el('strong',value));return e}\\nfunction live(vm){return vm.runtime || {}}\\nfunction status(vm){return live(vm).status || vm.inventory.status || 'unknown'}\\nfunction name(vm){return vm.config?.name || vm.name || 'VM '+vm.vmid}\\nfunction render(){\\n const vms=data?.vms || []; const running=vms.filter(v=>status(v)==='running').length;\\n $('cards').replaceChildren(card('VM’s zichtbaar',vms.length),card('Actief',running),card('Gestopt',vms.filter(v=>status(v)==='stopped').length),card('Met gedeeltelijke gegevens',vms.filter(v=>Object.keys(v.errors||{}).length).length));\\n const q=$('search').value.toLowerCase(), filter=$('status').value;\\n const visible=vms.filter(v=>(!filter||status(v)===filter)&&[v.vmid,name(v),v.node,v.config?.tags].join(' ').toLowerCase().includes(q));\\n $('rows').replaceChildren();\\n for(const vm of visible){const rt=live(vm),tr=el('tr');const title=el('td',String(vm.vmid));title.append(el('small',name(vm)));tr.append(title,el('td',vm.node));const st=el('td');st.append(el('span',status(vm),'badge '+(status(vm)==='running'?'running':'')));tr.append(st,el('td',percent(rt.cpu)),el('td',String(rt.cpus??vm.inventory.maxcpu??'—')),el('td',bytes(rt.mem)+' / '+bytes(rt.maxmem??vm.inventory.maxmem)),el('td',uptime(rt.uptime)));const td=el('td'),btn=el('button','Bekijken');btn.onclick=()=>{selected=vm.vmid;detail();$('details').scrollIntoView({behavior:'smooth',block:'start'})};td.append(btn);tr.append(td);$('rows').append(tr)}\\n if(!visible.length){const td=el('td',data?'Geen passende VM’s gevonden.':'Nog geen geslaagde meting.');td.colSpan=8;const tr=el('tr');tr.append(td);$('rows').append(tr)}\\n detail();\\n}\\nfunction detail(){const vm=data?.vms.find(v=>v.vmid===selected);$('details').hidden=!vm;if(!vm)return;\\n const r=live(vm);$('detail-title').textContent=`${name(vm)} · VM ${vm.vmid} · ${vm.node}`;\\n $('detail-errors').textContent=Object.keys(vm.errors||{}).length?'Niet opgehaald: '+Object.entries(vm.errors).map(([k,v])=>k+' ('+v+')').join(', '):'Alle aangevraagde onderdelen opgehaald.';\\n $('metrics').replaceChildren(card('CPU-gebruik',percent(r.cpu)),card('RAM-gebruik',num(r.mem)&&num(r.maxmem)&&r.maxmem>0?percent(r.mem/r.maxmem):'—'),card('Netwerk ontvangen · teller',bytes(r.netin)),card('Netwerk verzonden · teller',bytes(r.netout)),card('Schijf gelezen · teller',bytes(r.diskread)),card('Schijf geschreven · teller',bytes(r.diskwrite)),card('Max. schijfcapaciteit*',bytes(r.maxdisk??vm.inventory.maxdisk)),card('Uptime',uptime(r.uptime)));\\n $('sections').replaceChildren(el('p','*De Proxmox maxdisk-waarde is geen betrouwbare optelsom van alle gastschijven en zegt niets over vrije ruimte in het gast-OS. Bekijk de schijfconfiguratie hieronder.'));\\n for(const [key,label] of [['config','Configuratie: CPU, RAM, schijven, netwerk, boot en tags'],['runtime','Alle beschikbare runtimegegevens'],['snapshots','Snapshots'],['guest_network','IP-adressen en interfaces via Guest Agent (optioneel)'],['inventory','Clusterinventaris']]){const d=el('details');d.append(el('summary',label),el('pre',vm[key]===null?'Niet beschikbaar':JSON.stringify(vm[key],null,2)));$('sections').append(d)}\\n}\\n\\n$('search').oninput=render; $('status').onchange=render;\\n$('connection').textContent=data ? 'Meetmoment: '+new Date(data.sampled_at).toLocaleString('nl-BE')+' · Vernieuw de browserpagina voor nieuwe gegevens.' : 'Ophalen mislukt. Controleer de uitvoering van MCP - VM gegevens in n8n.';\\nif(!data) $('connection').className='warning';\\nrender();\\n</script></body></html>\\n\";\nconst html = template.replace('__VM_DATA_PAYLOAD__', () => payload);\nreturn [{json: {html, responseCode: data ? 200 : 502}}];\n"
+      },
+      "id": "38c304ca-1b31-48f4-94e8-82fe9e22b7e5",
+      "name": "Dashboard HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": "={{ $json.responseCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      },
+      "id": "9cd3b136-6cd3-43ce-ab87-ad4520230756",
+      "name": "Dashboard tonen",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        848,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Dashboard openen": {
+      "main": [
+        [
+          {
+            "node": "MCP - VM gegevens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP - VM gegevens": {
+      "main": [
+        [
+          {
+            "node": "Dashboard HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard HTML": {
+      "main": [
+        [
+          {
+            "node": "Dashboard tonen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "44c75f2e-374b-4fb4-a2a3-0d05d0605823",
+  "activeVersionId": null,
+  "versionCounter": 2,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-10-30T12:32:02.548Z",
+      "createdAt": "2026-10-30T12:32:02.548Z",
+      "role": "workflow:owner",
+      "workflowId": "UVce08UmjcZaeOje",
+      "projectId": "JxAp4XewJAfaYKd8",
+      "project": {
+        "updatedAt": "2026-10-02T09:35:14.492Z",
+        "createdAt": "2026-10-02T09:22:11.095Z",
+        "id": "JxAp4XewJAfaYKd8",
+        "name": "Jason De Smet <jason.desmet@student.vives.be>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "258336ae-8b66-4d33-8684-b1b53762cfe5"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

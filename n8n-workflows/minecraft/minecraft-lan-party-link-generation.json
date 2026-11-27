@@ -1,0 +1,1278 @@
+{
+  "updatedAt": "2026-11-27T13:06:17.952Z",
+  "createdAt": "2026-11-27T13:01:04.685Z",
+  "id": "C5LFcbwsDmSsz2bV",
+  "name": "Minecraft Lan Party Link Generation",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "af3eb314-7557-4a32-9dd9-d6547e38c25b",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3056,
+        2096
+      ],
+      "id": "4147a8ab-ff30-4e71-8c59-07972f74e504",
+      "name": "Admin GET",
+      "webhookId": "af3eb314-7557-4a32-9dd9-d6547e38c25b",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "2f99b493-f791-4cd9-9b01-3bba11b3f686",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3056,
+        2512
+      ],
+      "id": "523b3d78-e583-4c23-8ad9-f6ab5ebd01a8",
+      "name": "Admin POST",
+      "webhookId": "2f99b493-f791-4cd9-9b01-3bba11b3f686",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst data = $input.first().json;\n\nfunction parseList(value) {\n  if (Array.isArray(value)) return value;\n  if (typeof value === 'string') {\n    try {\n      const parsed = JSON.parse(value);\n      return Array.isArray(parsed) ? parsed : [];\n    } catch {\n      return [];\n    }\n  }\n  return [];\n}\n\nconst esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({\n  '&': '&amp;',\n  '<': '&lt;',\n  '>': '&gt;',\n  '\"': '&quot;',\n  \"'\": '&#39;'\n}[c]));\n\nconst day = value => {\n  if (!value) return '—';\n  const d = new Date(value);\n  return Number.isNaN(d.getTime())\n    ? '—'\n    : d.toISOString().slice(0, 10);\n};\n\nconst invites = parseList(data.invites);\nconst registrations = parseList(data.registrations);\n\nconst inviteRows = invites.map(i => {\n  const actions = `\n    ${i.status === 'available' ? `\n      <form method=\"POST\" action=\"/webhook/wl-admin\"\n        onsubmit=\"return confirm('Deze uitnodiging intrekken?')\">\n        <input type=\"hidden\" name=\"action\" value=\"revoke\">\n        <input type=\"hidden\" name=\"id\" value=\"${esc(i.id)}\">\n        <button class=\"revoke\" type=\"submit\">Intrekken</button>\n      </form>\n    ` : ''}\n    <form method=\"POST\" action=\"/webhook/wl-admin\"\n      onsubmit=\"return confirm('Deze uitnodiging verbergen uit het dashboard?')\">\n      <input type=\"hidden\" name=\"action\" value=\"delete\">\n      <input type=\"hidden\" name=\"id\" value=\"${esc(i.id)}\">\n      <button class=\"delete\" type=\"submit\">Verbergen</button>\n    </form>\n  `;\n\n  return `\n  <tr>\n    <td>${day(i.created_at)}</td>\n    <td>${esc(i.status === 'available' ? 'beschikbaar' : i.status)}</td>\n    <td>${esc(i.access_days)} dagen</td>\n    <td>${esc(i.use_count ?? 0)} / ${esc(i.max_uses ?? 1)}</td>\n    <td>${day(i.expires_at)}</td>\n    <td>${actions}</td>\n  </tr>`;\n}).join('');\n\nconst regRows = registrations.map(r => `\n<tr>\n  <td>${esc(r.username ?? r.minecraft_username)}</td>\n  <td>${esc(r.real_name)}</td>\n  <td>${day(r.created_at)}</td>\n  <td>${day(r.expires_at ?? r.access_expires_at)}</td>\n  <td>${esc(r.status)}</td>\n</tr>`).join('');\n\nconst html = `<!doctype html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Whitelist beheer</title>\n<style>\nbody{font-family:system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;background:#14161a;color:#e8e8e8}\ninput,button{padding:10px;margin:6px 0;border-radius:6px;border:1px solid #444;background:#1f2228;color:#fff;font-size:16px;width:100%;box-sizing:border-box}\nbutton{background:#4caf50;border:0;cursor:pointer}\nbutton.revoke{background:#c88724}\nbutton.delete{background:#b33a3a}\ntable{width:100%;border-collapse:collapse;font-size:14px}\ntd,th{padding:8px;border-bottom:1px solid #333;text-align:left;vertical-align:top}\n.card{background:#1b1e24;padding:16px;border-radius:10px;margin-bottom:16px;overflow-x:auto}\ntd form{margin:0 0 5px}\ntd button{min-width:95px}\n</style>\n</head>\n<body>\n<h1>Whitelist beheer</h1>\n\n<div class=\"card\">\n<h3>Nieuwe uitnodigingslink</h3>\n<form method=\"POST\" action=\"/webhook/wl-admin\">\n<input type=\"hidden\" name=\"action\" value=\"create\">\n\n<label>Minecraft-toegang (dagen)</label>\n<input type=\"number\" name=\"days\" value=\"365\" min=\"1\" max=\"3650\" required>\n\n<label>Link geldig (dagen)</label>\n<input type=\"number\" name=\"linkdays\" value=\"7\" min=\"1\" max=\"90\" required>\n\n<label>Maximum aantal gebruiken</label>\n<input type=\"number\" name=\"max_uses\" value=\"1\" min=\"1\" max=\"1000\" required>\n\n<button type=\"submit\">Link aanmaken</button>\n</form>\n</div>\n\n<div class=\"card\">\n<h3>Uitnodigingen</h3>\n<table>\n<tr>\n<th>Aangemaakt</th>\n<th>Status</th>\n<th>Toegang</th>\n<th>Gebruikt / maximum</th>\n<th>Link geldig tot</th>\n<th>Acties</th>\n</tr>\n${inviteRows || '<tr><td colspan=\"6\">Nog geen uitnodigingen.</td></tr>'}\n</table>\n</div>\n\n<div class=\"card\">\n<h3>Geregistreerde spelers</h3>\n<table>\n<tr><th>Minecraft</th><th>Naam</th><th>Aangemaakt</th><th>Toegang tot</th><th>Status</th></tr>\n${regRows || '<tr><td colspan=\"5\">Nog geen registraties.</td></tr>'}\n</table>\n</div>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2608,
+        2096
+      ],
+      "id": "203959c0-fad7-40a7-a8c6-eecacbfdaf68",
+      "name": "Admin pagina"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2384,
+        2096
+      ],
+      "id": "5ebb0f1f-748b-4322-a6a8-39c7da158dad",
+      "name": "Respond admin"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH nieuwe_token AS (\n  SELECT encode(gen_random_bytes(32), 'hex') AS token\n),\nnieuwe_uitnodiging AS (\n  INSERT INTO minecraft_whitelist.invites (\n    token_hash,\n    status,\n    expires_at,\n    created_by,\n    access_days,\n    max_uses,\n    use_count\n  )\n  SELECT\n    encode(digest(nieuwe_token.token, 'sha256'), 'hex'),\n    'available',\n    NOW() + ($1::integer * INTERVAL '1 day'),\n    $2::text,\n    $3::integer,\n    $4::integer,\n    0\n  FROM nieuwe_token\n  RETURNING id, status, expires_at, access_days, max_uses, use_count\n)\nSELECT\n  nieuwe_uitnodiging.*,\n  nieuwe_token.token\nFROM nieuwe_uitnodiging\nCROSS JOIN nieuwe_token;",
+        "options": {
+          "queryReplacement": "=={{ [\n  $json.linkdays,\n  $json.created_by,\n  $json.accessdays,\n  $json.max_uses\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        2320
+      ],
+      "id": "58a5f52a-929f-426a-8663-f5f439c0d00d",
+      "name": "uitnodiging opslaan",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first().json;\nconst body = input.body ?? input;\n\nconst linkDays = Math.min(\n  90,\n  Math.max(1, Number(body.linkdays ?? 7))\n);\n\nconst accessDays = Math.min(\n  3650,\n  Math.max(1, Number(body.days ?? 365))\n);\n\nconst maxUses = Math.min(\n  1000,\n  Math.max(1, Number(body.max_uses ?? 1))\n);\n\nreturn [{\n  json: {\n  linkdays: linkDays,\n  accessdays: accessDays,\n  max_uses: maxUses,\n  created_by: 'admin_n8n'\n}\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2608,
+        2320
+      ],
+      "id": "b6a20322-0cb9-4225-8faa-1d3abc22cbca",
+      "name": "uitnodiging voorbereiden"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "ALTER TABLE minecraft_whitelist.invites\nADD COLUMN IF NOT EXISTS access_days INTEGER NOT NULL DEFAULT 365;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -3056,
+        1872
+      ],
+      "id": "86b559b6-b784-41aa-9745-b5ce87f85756",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const saved = $input.first().json;\n\nconst token = saved.token;\nconst linkDays = $('uitnodiging voorbereiden').first().json.linkdays;\nconst accessDays = saved.access_days;\nconst maxUses = saved.max_uses;\n\nif (!token) {\n  throw new Error('Geen uitnodigingstoken ontvangen vanuit PostgreSQL.');\n}\n\nconst link = `http://10.20.236.220:5678/webhook/wl-join?token=${encodeURIComponent(token)}`;\n\nconst html = `\n<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Uitnodiging aangemaakt</title>\n</head>\n<body style=\"font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px\">\n  <h1>Uitnodiging aangemaakt</h1>\n  <p>De uitnodigingslink is aangemaakt.</p>\n  <p>De link is ${linkDays} dagen geldig.</p>\n  <p>De Minecraft-whitelisttoegang is ingesteld op ${accessDays} dagen.</p>\n  <p>Deze uitnodigingslink kan maximaal ${maxUses} keer gebruikt worden.</p>\n  <p><a href=\"${link}\">${link}</a></p>\n  <button onclick=\"navigator.clipboard.writeText(document.getElementById('link').textContent)\">Kopieer link</button>\n  <p id=\"link\" style=\"word-break:break-all\">${link}</p>\n  <p><a href=\"/webhook/wl-admin\">Terug naar beheer</a></p>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ...saved,\n    token,\n    link,\n    html\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2160,
+        2320
+      ],
+      "id": "d3458c31-a9e7-45a7-bb1d-c6bdf34aaf29",
+      "name": "uitnodiging resultaat"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=\n{{ $json.html }}\n",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1936,
+        2320
+      ],
+      "id": "8322cd04-1433-4b08-a495-2590876c2a5e",
+      "name": "Respond invite"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COALESCE((\n    SELECT json_agg(\n      json_build_object(\n        'id', id,\n        'status', CASE\n          WHEN status = 'available' AND expires_at < NOW()\n          THEN 'expired'\n          ELSE status\n        END,\n        'created_at', created_at,\n        'expires_at', expires_at,\n        'access_days', access_days,\n        'use_count', use_count,\n        'max_uses', max_uses\n      ) ORDER BY created_at DESC\n    )\n    FROM minecraft_whitelist.invites\n    WHERE deleted_at IS NULL\n  ), '[]'::json) AS invites,\n  COALESCE((\n    SELECT json_agg(\n      json_build_object(\n        'username', minecraft_username,\n        'real_name', real_name,\n        'created_at', created_at,\n        'expires_at', access_expires_at,\n        'status', status\n      ) ORDER BY created_at DESC\n    )\n    FROM minecraft_whitelist.registrations\n  ), '[]'::json) AS registrations;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2832,
+        2096
+      ],
+      "id": "340852c7-5d57-46e8-9365-2f04151a9f2c",
+      "name": "Beheerdata ophalen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "8e447927-5671-41ad-b6ad-b28b25e83a4f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3056,
+        1648
+      ],
+      "id": "367f39c9-8647-4c7a-a6de-4b9f91108226",
+      "name": "Registratie GET",
+      "webhookId": "8e447927-5671-41ad-b6ad-b28b25e83a4f"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  $1::text AS token,\n  COALESCE((\n    SELECT json_build_object(\n      'id', id,\n      'access_days', access_days\n    )\n    FROM minecraft_whitelist.invites\n    WHERE token_hash = encode(\n      digest($1::text, 'sha256'),\n      'hex'\n    )\n      AND status = 'available'\n      AND expires_at > NOW()\n      AND used_at IS NULL\n      AND revoked_at IS NULL\n    LIMIT 1\n  ), 'null'::json) AS invite;",
+        "options": {
+          "queryReplacement": "=={{ [ $json.query.token || '' ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2832,
+        1648
+      ],
+      "id": "f0c74176-6a46-4339-b2b6-cadeeaa24e36",
+      "name": "Uitnodiging controleren",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst row = $input.first().json;\n\nlet invite = row.invite;\nif (typeof invite === 'string') {\n  try {\n    invite = JSON.parse(invite);\n  } catch {\n    invite = null;\n  }\n}\n\nconst token = String(row.token || '');\nconst geldig = invite && invite.id && token.length > 0;\n\nconst escapeHtml = (value) => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/\"/g, '&quot;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;');\n\nconst html = geldig\n  ? `<!doctype html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Minecraft whitelist aanvragen</title>\n</head>\n<body>\n<h1>Minecraft whitelist aanvragen</h1>\n<p>Je uitnodiging is geldig. Vul je gegevens in.</p>\n<form method=\"POST\" action=\"/webhook/wl-register\">\n<input type=\"hidden\" name=\"token\" value=\"${escapeHtml(token)}\">\n<label>Minecraft-gebruikersnaam</label><br>\n<input name=\"username\" minlength=\"3\" maxlength=\"16\"\npattern=\"[A-Za-z0-9_]{3,16}\" required><br><br>\n<label>Echte naam</label><br>\n<input name=\"real_name\" maxlength=\"100\" required><br><br>\n<button type=\"submit\">Registreren</button>\n</form>\n</body>\n</html>`\n  : `<!doctype html>\n<html lang=\"nl\">\n<head><meta charset=\"utf-8\"><title>Uitnodiging ongeldig</title></head>\n<body>\n<h1>Uitnodiging ongeldig</h1>\n<p>Deze uitnodiging is ongeldig, verlopen of al gebruikt.</p>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    geldig: !!geldig,\n    html,\n    invite_id: geldig ? invite.id : null\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2608,
+        1648
+      ],
+      "id": "2c17f5f1-b603-4a1b-95a1-ad20c9591262",
+      "name": "Registratiepagina maken"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2384,
+        1648
+      ],
+      "id": "93aea3d7-1928-4bcc-89e8-7ae4eaab6d80",
+      "name": "Registratie pagina tonen"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ea2a95e3-d460-4830-8046-6b25453d63d2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2720,
+        3104
+      ],
+      "id": "29b96ab8-e59e-4427-b139-e515a9b7efe0",
+      "name": "Registratie POST",
+      "webhookId": "ea2a95e3-d460-4830-8046-6b25453d63d2"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst body = $input.first().json.body ?? {};\nconst username = String(body.username ?? '').trim();\nconst realName = String(body.real_name ?? '').trim();\nconst token = String(body.token ?? '').trim();\n\nconst fouten = [];\n\nif (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {\n  fouten.push('De Minecraft-gebruikersnaam moet 3 tot 16 letters, cijfers of underscores bevatten.');\n}\n\nif (!realName || realName.length > 100) {\n  fouten.push('Vul een echte naam in van maximaal 100 tekens.');\n}\n\nif (!/^[a-fA-F0-9]{64}$/.test(token)) {\n  fouten.push('De uitnodigingstoken ontbreekt of is ongeldig.');\n}\n\nreturn [{\n  json: {\n    geldig: fouten.length === 0,\n    username,\n    real_name: realName,\n    token,\n    foutmelding: fouten.join(' ')\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2496,
+        3104
+      ],
+      "id": "31f2d958-d3a4-4dea-be6b-4fab8f435147",
+      "name": "Registratie invoer controleren"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "278bca6d-1054-4d81-97c0-170cafb51c90",
+              "leftValue": "={{ $json.geldig.toBoolean() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2272,
+        3104
+      ],
+      "id": "61900c50-0d72-40d4-aa10-9b4365eb0840",
+      "name": "Registratie invoer controleren1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "\nSELECT\n  COALESCE((\n    SELECT json_build_object(\n      'id', id,\n      'access_days', access_days\n    )\n    FROM minecraft_whitelist.invites\n    WHERE token_hash = encode(\n        digest($1::text, 'sha256'),\n        'hex'\n      )\n      AND status = 'available'\n      AND expires_at > NOW()\n      AND used_at IS NULL\n      AND revoked_at IS NULL\n    LIMIT 1\n  ), 'null'::json) AS invite,\n  $2::text AS username,\n  $3::text AS real_name;\n",
+        "options": {
+          "queryReplacement": "=={{ [  $json.token,  $json.username,  $json.real_name] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2048,
+        3040
+      ],
+      "id": "01d78768-1a39-45f2-979f-438145b2fd14",
+      "name": "Registratie uitnodiging controleren",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0374ed7f-3540-4450-afcc-ebb0ac84c6ba",
+              "leftValue": "={{ Boolean($json.invite?.id) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1824,
+        3040
+      ],
+      "id": "0a4f249c-9adc-4aef-8629-a7f28232f058",
+      "name": "If uitnodiging geldig"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH gebruikte_uitnodiging AS (\n  UPDATE minecraft_whitelist.invites\n  SET\n    use_count = use_count + 1,\n    status = CASE\n      WHEN use_count + 1 >= max_uses THEN 'used'\n      ELSE 'available'\n    END,\n    used_at = CASE\n      WHEN use_count + 1 >= max_uses THEN NOW()\n      ELSE NULL\n    END\n  WHERE id = (($1::jsonb)->>'id')::integer\n    AND status = 'available'\n    AND expires_at > NOW()\n    AND use_count < max_uses\n    AND used_at IS NULL\n    AND revoked_at IS NULL\n  RETURNING id, access_days\n),\nnieuwe_registratie AS (\n  INSERT INTO minecraft_whitelist.registrations (\n    minecraft_username,\n    real_name,\n    status,\n    invite_id,\n    registered_at,\n    expires_at,\n    access_expires_at\n  )\n  SELECT\n    $2::text,\n    $3::text,\n    'pending',\n    id,\n    NOW(),\n    NULL,\n    NOW() + (access_days * INTERVAL '1 day')\n  FROM gebruikte_uitnodiging\n  RETURNING id, minecraft_username, real_name, access_expires_at\n)\nSELECT * FROM nieuwe_registratie;",
+        "options": {
+          "queryReplacement": "=={{ [\n  JSON.stringify(typeof $json.invite === 'string' ? JSON.parse($json.invite) : $json.invite),\n  $json.username,\n  $json.real_name\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -1600,
+        2960
+      ],
+      "id": "81d6d0d0-ee31-440c-86c7-ba9e4cb38bd2",
+      "name": "Registratie opslaan",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "90c72b7a-d7e2-46c2-82d5-6cf7f8150188",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1376,
+        2960
+      ],
+      "id": "dd5fbb2c-cd69-43d2-b2ba-6addff26cf1b",
+      "name": "If registratie opgeslagen"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist add {{ $json.minecraft_username }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1152,
+        2912
+      ],
+      "id": "1e574a1b-bb03-408b-820c-b65f964134fc",
+      "name": "Minecraft whitelist toevoegen",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Registratie ontvangen</title>\n</head>\n<body>\n  <h1>Registratie ontvangen!</h1>\n  <p>Je aanvraag is verwerkt. Controleer straks of je op de Minecraft-server kunt.</p>\n</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -720,
+        2912
+      ],
+      "id": "9e114cbf-75c0-4ee6-9f84-b9e9a6f34415",
+      "name": "Registratie antwoord"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "\n<!doctype html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Registratie mislukt</title>\n</head>\n<body>\n  <h1>Registratie niet mogelijk</h1>\n  <p>Je gegevens zijn ongeldig of je uitnodiging is verlopen, ingetrokken of al gebruikt.</p>\n  <p>Controleer je gegevens of vraag de beheerder om een nieuwe uitnodiging.</p>\n</body>\n</html>\n",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1136,
+        3136
+      ],
+      "id": "93edacb6-ea99-40f3-a070-07ebe32f0c62",
+      "name": "Registratie foutmelding"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.registrations\nSET\n  status = 'active',\n  activated_at = NOW(),\n  updated_at = NOW()\nWHERE id = $1::integer\n  AND status = 'pending'\nRETURNING id, minecraft_username, status, access_expires_at;",
+        "options": {
+          "queryReplacement": "=={{ [ $('Registratie opslaan').first().json.id ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -928,
+        2912
+      ],
+      "id": "8beaf300-33c3-4da6-83d0-e6e43e79e385",
+      "name": "Registratie activeren",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9f5515c8-c2fc-4d53-8af0-941b2bd57fc7",
+              "leftValue": "={{ $json.body.action === 'create' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2832,
+        2512
+      ],
+      "id": "0bf58b95-7292-455c-81ac-6cf1ded267ad",
+      "name": "Admin actie controleren"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "revoke",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9337c8fc-e7f3-4483-9258-e447593125f3"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9ed63e3f-427b-4903-8ab8-338c67d68bb0",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "delete",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -2608,
+        2608
+      ],
+      "id": "5bb05045-a3fd-4e95-a27c-07ef3a3b2068",
+      "name": "Admin actie router"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.invites\nSET\n    status = 'revoked',\n    revoked_at = NOW()\nWHERE id = $1::bigint\n  AND status = 'available'\n  AND revoked_at IS NULL\nRETURNING id, status, revoked_at;",
+        "options": {
+          "queryReplacement": "={{ [$json.body.id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        2512
+      ],
+      "id": "c303cc1c-f728-4c5f-839a-9f2695dd78f6",
+      "name": "Uitnodiging intrekken",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.invites\nSET\n    status = CASE\n        WHEN status = 'available' THEN 'revoked'\n        ELSE status\n    END,\n    revoked_at = CASE\n        WHEN status = 'available' THEN NOW()\n        ELSE revoked_at\n    END,\n    deleted_at = NOW()\nWHERE id = $1::bigint\n  AND deleted_at IS NULL\nRETURNING id, status, deleted_at;",
+        "options": {
+          "queryReplacement": "={{ [$json.body.id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2384,
+        2704
+      ],
+      "id": "3d1947ad-2f9e-458b-be35-0b10820a806b",
+      "name": "Uitnodiging verbergen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0;url=/webhook/wl-admin\">\n</head>\n<body>Terug naar beheer...</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2160,
+        2512
+      ],
+      "id": "9f973754-82a0-44e4-bde6-f0192a37adb8",
+      "name": "Antwoord intrekken"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0;url=/webhook/wl-admin\">\n</head>\n<body>Terug naar beheer...</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2160,
+        2704
+      ],
+      "id": "c61f2edf-c7c2-4734-8bbf-4d48a6fa2cb7",
+      "name": "Antwoord verbergen"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -2720,
+        3408
+      ],
+      "id": "33eafe22-9ad6-4f82-9283-36c2e2cb5031",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    id,\n    minecraft_username,\n    real_name,\n    status,\n    access_expires_at\nFROM minecraft_whitelist.registrations\nWHERE status = 'active'\n  AND access_expires_at <= NOW()\nORDER BY access_expires_at ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2496,
+        3408
+      ],
+      "id": "2d9649f2-1c67-4781-83a4-22469b5c8bc9",
+      "name": "Verlopen spelers ophalen",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"command\": \"whitelist remove {{$json.minecraft_username}}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2256,
+        3408
+      ],
+      "id": "e5c3b29d-9903-4c1e-8433-c6eeb9738051",
+      "name": "Minecraft whitelist verwijderen",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE minecraft_whitelist.registrations\nSET\n    access_expires_at = NOW() - INTERVAL '1 year',\n    updated_at = NOW()\nWHERE minecraft_username = 'Trepz420'\n  AND status = 'active'\nRETURNING id, minecraft_username, status, access_expires_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -3200,
+        3120
+      ],
+      "id": "616a016f-aa7f-4a97-9d5e-d5bbfac1fe2d",
+      "name": "Test Year Back",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "TRUNCATE TABLE\n    minecraft_whitelist.registrations,\n    minecraft_whitelist.invites\nRESTART IDENTITY CASCADE;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -3200,
+        2912
+      ],
+      "id": "12e7695d-7f82-4eb9-9f85-614ef37e989f",
+      "name": "Delete al users",
+      "credentials": {
+        "postgres": {
+          "id": "O0ZR1267of43e5eC",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Lan Party Link generation\n this make's a page for the admin to make a link for the guest to play minecraft for the lan party\n\nhttp://10.20.236.220:5678/webhook/wl-join",
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3040,
+        1424
+      ],
+      "id": "c16b5e13-d99e-45aa-8a5d-3fa723828e7d",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "Admin GET": {
+      "main": [
+        [
+          {
+            "node": "Beheerdata ophalen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin POST": {
+      "main": [
+        [
+          {
+            "node": "Admin actie controleren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin pagina": {
+      "main": [
+        [
+          {
+            "node": "Respond admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uitnodiging opslaan": {
+      "main": [
+        [
+          {
+            "node": "uitnodiging resultaat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uitnodiging voorbereiden": {
+      "main": [
+        [
+          {
+            "node": "uitnodiging opslaan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uitnodiging resultaat": {
+      "main": [
+        [
+          {
+            "node": "Respond invite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Beheerdata ophalen": {
+      "main": [
+        [
+          {
+            "node": "Admin pagina",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie GET": {
+      "main": [
+        [
+          {
+            "node": "Uitnodiging controleren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uitnodiging controleren": {
+      "main": [
+        [
+          {
+            "node": "Registratiepagina maken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratiepagina maken": {
+      "main": [
+        [
+          {
+            "node": "Registratie pagina tonen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie POST": {
+      "main": [
+        [
+          {
+            "node": "Registratie invoer controleren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie invoer controleren": {
+      "main": [
+        [
+          {
+            "node": "Registratie invoer controleren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie invoer controleren1": {
+      "main": [
+        [
+          {
+            "node": "Registratie uitnodiging controleren",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registratie foutmelding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie uitnodiging controleren": {
+      "main": [
+        [
+          {
+            "node": "If uitnodiging geldig",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If uitnodiging geldig": {
+      "main": [
+        [
+          {
+            "node": "Registratie opslaan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registratie foutmelding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie opslaan": {
+      "main": [
+        [
+          {
+            "node": "If registratie opgeslagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If registratie opgeslagen": {
+      "main": [
+        [
+          {
+            "node": "Minecraft whitelist toevoegen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registratie foutmelding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Minecraft whitelist toevoegen": {
+      "main": [
+        [
+          {
+            "node": "Registratie activeren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie foutmelding": {
+      "main": [
+        []
+      ]
+    },
+    "Admin actie controleren": {
+      "main": [
+        [
+          {
+            "node": "uitnodiging voorbereiden",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Admin actie router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin actie router": {
+      "main": [
+        [
+          {
+            "node": "Uitnodiging intrekken",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uitnodiging verbergen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uitnodiging intrekken": {
+      "main": [
+        [
+          {
+            "node": "Antwoord intrekken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uitnodiging verbergen": {
+      "main": [
+        [
+          {
+            "node": "Antwoord verbergen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verlopen spelers ophalen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verlopen spelers ophalen": {
+      "main": [
+        [
+          {
+            "node": "Minecraft whitelist verwijderen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registratie activeren": {
+      "main": [
+        [
+          {
+            "node": "Registratie antwoord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete al users": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "e90389d4-2147-4a9d-ab38-731d1c9b8f14",
+  "activeVersionId": "2b45fc00-3257-4d42-aa55-7027cdc49f7c",
+  "versionCounter": 4,
+  "triggerCount": 5,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-11-27T13:01:04.685Z",
+      "createdAt": "2026-11-27T13:01:04.685Z",
+      "role": "workflow:owner",
+      "workflowId": "C5LFcbwsDmSsz2bV",
+      "projectId": "JxAp4XewJAfaYKd8",
+      "project": {
+        "updatedAt": "2026-10-02T09:35:14.492Z",
+        "createdAt": "2026-10-02T09:22:11.095Z",
+        "id": "JxAp4XewJAfaYKd8",
+        "name": "Jason De Smet <jason.desmet@student.vives.be>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "258336ae-8b66-4d33-8684-b1b53762cfe5"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

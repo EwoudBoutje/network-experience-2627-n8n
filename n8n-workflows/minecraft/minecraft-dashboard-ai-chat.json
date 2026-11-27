@@ -1,0 +1,691 @@
+{
+  "updatedAt": "2026-11-27T13:08:55.175Z",
+  "createdAt": "2026-10-02T09:35:52.072Z",
+  "id": "VeCUgmzBsbhUbqfp",
+  "name": "Minecraft Dashboard / AI chat",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -3072,
+        32
+      ],
+      "id": "d4e418d3-ceee-4f4c-b7d2-53fa4e2c8fac",
+      "name": "When chat message received",
+      "webhookId": "9f99a81d-76b2-4e73-b130-c79a831dc5c6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=   {{ $json.chatInput || $json.body.message }}",
+        "options": {
+          "systemMessage": "Je bent de beheerder-assistent van een Minecraft-server. Je voert opdrachten\nuit via de tools minecraft_command en minecraft_log en antwoordt in het Nederlands.\n\nTOOLS\n- minecraft_command: stuurt één console-commando naar de server, zonder slash.\n  Deze tool geeft zelf GEEN antwoord terug, alleen een lege bevestiging.\n- minecraft_log: leest het serverlog. Hier staat het echte antwoord van de server.\n- mc_commands: lijst met alle commando's en de juiste syntax.\n\nWERKWIJZE\n1. Vertaal het verzoek naar een command dat past bij de geïnstalleerde\n   Minecraft-versie en plugins. Verzin geen commands, argumenten,\n   spelersnamen of resultaten.\n2. Weet je niet zeker welk command past, gebruik dan eerst mc_commands.\n   Blijf je twijfelen, vraag om verduidelijking.\n3. Stuur precies één command per toolaanroep, zonder slash.\n   Bij meerdere opdrachten: voer ze afzonderlijk en achtereenvolgens uit.\n4. Roep minecraft_command en minecraft_log nooit tegelijk aan, maar altijd\n   na elkaar: eerst het command, daarna pas het log.\n5. Heb je het resultaat van een command nodig (list, whitelist list, tps,\n   seen, banlist, enz.), lees dan daarna minecraft_log en zoek de laatste\n   regels onderaan. Staat het antwoord er nog niet, lees het log dan één\n   keer opnieuw voordat je zegt dat je het niet weet.\n6. Controleer iedere serverrespons voordat je verdergaat. Stop bij een fout\n   of onbekende uitvoeringsstatus en meld dat aan de gebruiker.\n7. Herhaal commando's niet automatisch.\n\nSPELERSNAMEN\nAls de gebruiker een naam noemt voor een actie (kill, kick, ban, tp, gamemode, enz.):\n- Gebruik eerst minecraft:list en lees het log om te zien wie online is.\n- Staat de speler daar niet bij, controleer dan met whitelist list.\n- Corrigeer typfouten of hoofdletters naar de echte spelersnaam, zodat de\n  gebruiker zich geen zorgen hoeft te maken over spelfouten.\n- Is er geen duidelijke match, vraag dan welke speler bedoeld wordt.\n  Raad nooit een naam.\n\nVEILIGHEID\nVoer deze commando's alleen uit als de gebruiker er expliciet om vraagt:\nstop, ban, op, deop, kickall, whitelist off, rechtenwijzigingen (lp).\nBELANGRIJK: voer nooit IP-bans uit (geen ban-ip), ook niet als erom gevraagd wordt.\n\nANTWOORD\nGeef na afloop een korte, duidelijke samenvatting van wat de server teruggaf,\nbijvoorbeeld de lijst met spelers. Meld nooit dat je iets niet hebt zonder\neerst het log gelezen te hebben.\n\n\nindien de server terug geeft player does not exist vragen whitelist player op en kijk wat het dicht bij de voorgestelde naam is. als het moet kan je de user vragen bedoelt u ? "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2656,
+        16
+      ],
+      "id": "ecc84bb6-fbec-496c-99d1-5ffd05951747",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-27b",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-27b"
+        },
+        "builtInTools": {
+          "webSearch": {
+            "searchContextSize": "medium"
+          }
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2848,
+        256
+      ],
+      "id": "865d2214-6ea7-43bb-b8f5-740b4d5d8992",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zr4WedfNzsZ4SHIx",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=dashboard\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -2720,
+        256
+      ],
+      "id": "c0288b3c-7be8-4df6-bff7-5d612397ef56",
+      "name": "Simple Memory2"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!doctype html>\n<html lang=\"nl\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Serverbeheer</title>\n<style>\n:root{--bg:#e8e5dc;--panel:#f6f4ee;--ink:#1d2822;--mute:#5d6b62;--line:#cdc8ba;--accent:#3f7d3a;--accent-ink:#fff;--warn:#b3402f;--you:#1d2822;--you-ink:#f6f4ee}\n@media(prefers-color-scheme:dark){:root{--bg:#161d19;--panel:#1f2924;--ink:#e6ede7;--mute:#92a398;--line:#33413a;--accent:#6bb35f;--accent-ink:#10170f;--warn:#e27a68;--you:#e6ede7;--you-ink:#161d19}}\n*{box-sizing:border-box}\nhtml,body{height:100%;margin:0}\nbody{background:var(--bg);color:var(--ink);font:16px/1.5 \"Segoe UI\",system-ui,sans-serif}\n.app{max-width:1000px;height:100%;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 260px;grid-template-rows:auto minmax(0,1fr);gap:12px}\nheader{grid-column:1/-1;display:flex;align-items:center;gap:10px}\nh1{font-size:1.25rem;margin:0}\nh2{font-size:.95rem;margin:0 0 8px}\n.dot{width:12px;height:12px;border-radius:2px;background:var(--mute)}\n.dot.running{background:var(--accent)}\n.dot.offline{background:var(--warn)}\n.dot.starting,.dot.stopping{background:#d6a02c}\n#state{color:var(--mute)}\n.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-height:0}\n.chat{display:flex;flex-direction:column}\n#log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:8px}\n.msg{max-width:85%;padding:8px 12px;border-radius:6px;white-space:pre-wrap;word-break:break-word}\n.you{align-self:flex-end;background:var(--you);color:var(--you-ink)}\n.bot{align-self:flex-start;border:1px solid var(--line);font-family:Consolas,\"Courier New\",monospace;font-size:.92rem}\n.bot.wait{color:var(--mute)}\n.bot.err{color:var(--warn);border-color:var(--warn)}\nform{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:10px}\ninput{flex:1;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}\nbutton{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 16px;cursor:pointer}\nbutton:disabled{opacity:.5;cursor:wait}\n:focus-visible{outline:2px solid var(--accent);outline-offset:2px}\nul{list-style:none;margin:0;padding:0}\nli{padding:4px 0;border-bottom:1px solid var(--line)}\nli:last-child{border:0}\n.mute{color:var(--mute)}\n@media(max-width:720px){.app{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr)}}\n</style>\n</head>\n<body>\n<div class=\"app\">\n<header><span id=\"dot\" class=\"dot\"></span><h1>Minecraft-server</h1><span id=\"state\">Status ophalen...</span></header>\n<section class=\"panel chat\" aria-label=\"Chat met de agent\">\n<div id=\"log\" aria-live=\"polite\"></div>\n<form id=\"f\"><input id=\"t\" autocomplete=\"off\" placeholder=\"Typ een opdracht, bv. whitelist jason\" aria-label=\"Opdracht\"><button id=\"b\">Verstuur</button></form>\n</section>\n<aside class=\"panel\" aria-label=\"Spelers online\">\n<h2 id=\"who\">Spelers online</h2>\n<ul id=\"players\"></ul>\n<p class=\"mute\" id=\"upd\"></p>\n</aside>\n</div>\n<script>\nvar $ = function (id) { return document.getElementById(id); };\nvar sid = 's' + Date.now() + Math.random().toString(36).slice(2);\nvar NAMES = { running: 'Server draait', offline: 'Server is offline', starting: 'Server start op', stopping: 'Server stopt' };\n\nfunction loadStatus() {\n  fetch('mc-status', { cache: 'no-store' })\n    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })\n    .then(function (d) {\n      $('dot').className = 'dot ' + d.status;\n      $('state').textContent = NAMES[d.status] || d.status;\n      $('who').textContent = 'Spelers online' + (d.max ? ' (' + d.count + '/' + d.max + ')' : '');\n      var ul = $('players');\n      ul.textContent = '';\n      if (!d.players || !d.players.length) {\n        var e = document.createElement('li');\n        e.className = 'mute';\n        e.textContent = d.status === 'running' ? 'Niemand online' : 'Server draait niet';\n        ul.appendChild(e);\n      } else {\n        d.players.forEach(function (p) {\n          var li = document.createElement('li');\n          li.textContent = p;\n          ul.appendChild(li);\n        });\n      }\n      $('upd').textContent = 'Bijgewerkt om ' + new Date().toLocaleTimeString('nl-BE');\n    })\n    .catch(function () {\n      $('dot').className = 'dot';\n      $('state').textContent = 'Geen verbinding met n8n';\n    });\n}\n\nfunction add(cls, text) {\n  var m = document.createElement('div');\n  m.className = 'msg ' + cls;\n  m.textContent = text;\n  $('log').appendChild(m);\n  $('log').scrollTop = $('log').scrollHeight;\n  return m;\n}\n\nfunction busy(on) { $('b').disabled = on; $('t').disabled = on; if (!on) $('t').focus(); }\n\n$('f').addEventListener('submit', function (ev) {\n  ev.preventDefault();\n  var text = $('t').value.trim();\n  if (!text) return;\n  $('t').value = '';\n  add('you', text);\n  var pending = add('bot wait', 'Bezig, het model kan even duren...');\n  busy(true);\n  var ctl = new AbortController();\n  var timer = setTimeout(function () { ctl.abort(); }, 180000);\n  fetch('mc-chat', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ message: text, sessionId: sid }),\n    signal: ctl.signal\n  })\n    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })\n    .then(function (d) { pending.className = 'msg bot'; pending.textContent = d.output || '(leeg antwoord)'; })\n    .catch(function (e) {\n      pending.className = 'msg bot err';\n      pending.textContent = 'Mislukt: ' + (e.name === 'AbortError' ? 'geen antwoord binnen 3 minuten' : e.message);\n    })\n    .then(function () { clearTimeout(timer); busy(false); loadStatus(); });\n});\n\nloadStatus();\nsetInterval(function () { if (!document.hidden) loadStatus(); }, 30000);\n</script>\n</body>\n</html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -2848,
+        672
+      ],
+      "id": "062939eb-5cd0-4da2-a1cb-fd1961de0ebb",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "path": "dashboard",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3072,
+        672
+      ],
+      "id": "f429addd-e13c-47c9-85c3-f3a466914040",
+      "name": "Webhook",
+      "webhookId": "8c3d4e38-4dcb-41a7-a4c2-a2e277c2fe10",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "bfTqXtbtusAOyQH0",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "mc-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3072,
+        448
+      ],
+      "id": "c4b2392a-a969-4e83-883c-d73bc07aa001",
+      "name": "Webhook status",
+      "webhookId": "bdca59ec-e402-4ecd-93dd-f3ec527af725"
+    },
+    {
+      "parameters": {
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/resources",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2848,
+        448
+      ],
+      "id": "2ee553e3-8c09-42c2-83d3-d5d2581a6a1c",
+      "name": "Resources",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"command\": \"minecraft:list\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2624,
+        448
+      ],
+      "id": "753848f2-5a19-4129-bf89-6c71a1441c67",
+      "name": "List",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2400,
+        448
+      ],
+      "id": "ea5fe7d2-91d8-49b4-8780-9d0f5908c1fa",
+      "name": "Wait",
+      "webhookId": "5eb4be00-c34b-4be5-b0e7-5a58012f77b3"
+    },
+    {
+      "parameters": {
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2176,
+        448
+      ],
+      "id": "058798f6-661a-43a2-8b6f-10d4ffb9d6ff",
+      "name": "Log",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $('Resources').first().json;\nconst state = res?.attributes?.current_state || 'offline';\nconst log = String($input.first().json.data ?? '');\nconst lines = log.split('\\n').filter(l => l.includes('players online'));\nconst last = lines.length ? lines[lines.length - 1].trim() : '';\nconst m = last.match(/There are (\\d+) of a max of (\\d+) players online:\\s*(.*)$/);\nconst players = (state === 'running' && m && m[3].trim())\n  ? m[3].split(',').map(s => s.trim()).filter(Boolean) : [];\nreturn [{ json: { status: state, count: m ? Number(m[1]) : 0, max: m ? Number(m[2]) : null, players } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1952,
+        448
+      ],
+      "id": "5e93b7d0-9316-4881-a07a-0c44dc6fd71b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1728,
+        448
+      ],
+      "id": "980407bd-937b-4f4d-adba-3c7e25226b95",
+      "name": "Respond status"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mc-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3072,
+        224
+      ],
+      "id": "d29f5be9-0365-4000-8cb4-68904a962b65",
+      "name": "Webhook chat",
+      "webhookId": "10bf4be9-4a18-4d16-a951-0b59e63d643b"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2192,
+        16
+      ],
+      "id": "668503d7-8772-49a2-9e0a-ab0925348654",
+      "name": "Respond chat"
+    },
+    {
+      "parameters": {
+        "description": "Geeft de lijst van alle Minecraft-servercommando's met de juiste syntax. Gebruik dit eerst als je niet zeker weet welk command past bij een verzoek.",
+        "jsCode": "return `MINECRAFT-COMMANDO'S VOOR DE CONSOLE (zonder slash typen, steeds exact een command per tool-aanroep)\n\nREGELS\n- Gebruik altijd een echte spelersnaam. @a werkt, @p en @s werken niet vanuit de console.\n- Commando's die jouw positie nodig hebben, kun je omzetten met: execute as <speler> at <speler> run <command>\n- Gebruik voor vanilla commando's zo nodig het voorvoegsel minecraft: (bv. minecraft:list), omdat Essentials sommige namen overneemt.\n- GEVAARLIJK (alleen uitvoeren als de gebruiker er expliciet om vraagt): stop, ban, ban-ip, op, deop, kickall, whitelist off, whitelist reload, lp ... permission set, lp ... parent add, rg remove, worldborder set, execute, kill @a, clear <speler>, fill, setblock, difficulty, gamerule.\n\nSPELERS EN TOEGANG\nwhitelist add <speler> | whitelist remove <speler> | whitelist list | whitelist on | whitelist off\nop <speler> | deop <speler>\nkick <speler> [reden] | ban <speler> [reden] | pardon <speler> | ban-ip <ip> | pardon-ip <ip> | banlist\nlist | seed | difficulty peaceful|easy|normal|hard | defaultgamemode survival|creative\n\nBERICHTEN\nsay <bericht> | msg <speler> <bericht> | tell <speler> <bericht> | me <tekst>\ntellraw <speler> {\"text\":\"hallo\"} | title <speler> title {\"text\":\"Hallo\"} | title <speler> subtitle {\"text\":\"tekst\"} | title <speler> actionbar {\"text\":\"tekst\"}\nEssentials: broadcast <bericht> | mail send <speler> <bericht>\n\nSPELER AANPASSEN\ngamemode survival|creative|adventure|spectator <speler>\ntp <speler> <andere speler> | tp <speler> <x> <y> <z>\ngive <speler> <item> [aantal]   (bv. give Jan minecraft:diamond 5)\nclear <speler> [item] | kill <speler> | damage <speler> <hoeveelheid>\neffect give <speler> <effect> [seconden] [niveau] | effect clear <speler>\nexperience add <speler> <aantal> points|levels | experience set <speler> <aantal> levels\nenchant <speler> <enchantment> [niveau] | spawnpoint <speler> <x> <y> <z>\nadvancement grant|revoke <speler> everything\nattribute <speler> minecraft:generic.max_health base set <waarde>\n\nWERELD\ntime set day|noon|night|midnight|<ticks> | time add <ticks> | time query daytime\nweather clear|rain|thunder [seconden]\ngamerule <regel> <waarde>   (bv. gamerule keepInventory true, doDaylightCycle false, mobGriefing false)\nsetworldspawn <x> <y> <z> | worldborder set <grootte> [seconden] | worldborder center <x> <z> | worldborder get\nsummon <entiteit> <x> <y> <z> | setblock <x> <y> <z> <blok> | fill <x1> <y1> <z1> <x2> <y2> <z2> <blok>\nforceload add <x> <z> | locate structure <structuur> | locate biome <biome> | particle <naam> <x> <y> <z>\ntick rate <waarde> | tick freeze | tick unfreeze\nscoreboard objectives add <naam> dummy | scoreboard players set <speler> <naam> <waarde> | team add <naam> | tag <speler> add <tag>\n\nSERVER\nsave-all | save-off | save-on | stop | reload | version | plugins\ntps | spark tps | spark healthreport | spark profiler start | spark profiler stop\n\nESSENTIALS\nheal <speler> | feed <speler> | fly <speler> | god <speler> | repair <speler> | clearinventory <speler>\nspeed walk|fly <1-10> <speler> | tphere <speler> | spawn <speler> | setspawn | warp <naam> <speler> | setwarp <naam> | delwarp <naam>\nwhois <speler> | seen <speler> | invsee <speler> | kickall [reden] | mute <speler> [tijd] | unmute <speler>\neco give <speler> <bedrag> | eco take <speler> <bedrag> | eco set <speler> <bedrag> | balance <speler>\nnick <speler> <naam> | give <speler> <item> [aantal] | item <item> [aantal] | sudo <speler> <command>\n\nLUCKPERMS (rechten en groepen)\nlp user <speler> info | lp user <speler> parent add <groep> | lp user <speler> parent remove <groep> | lp user <speler> parent set <groep>\nlp user <speler> permission set <recht> true|false | lp user <speler> permission unset <recht>\nlp group <groep> info | lp group <groep> permission set <recht> true|false | lp creategroup <groep> | lp deletegroup <groep> | lp listgroups\nlp user <speler> meta setprefix <gewicht> \"<prefix>\" | lp user <speler> meta setsuffix <gewicht> \"<suffix>\"\n\nWORLDGUARD (regio's)\nrg list -w world | rg info -w world <regio> | rg remove -w world <regio>\nrg flag -w world <regio> <flag> allow|deny | rg flag -w world <regio> <flag>   (zonder waarde = flag wissen)\nrg addowner -w world <regio> <speler> | rg removeowner -w world <regio> <speler> | rg addmember -w world <regio> <speler> | rg removemember -w world <regio> <speler>\nVeelgebruikte flags: build, block-break, block-place, use, pvp, tnt, creeper-explosion, mob-spawning, mob-damage, fire-spread, entry, exit, invincible, fall-damage\nLet op: rg define en rg redefine werken niet vanuit de console, daarvoor is een selectie van een speler nodig.\n\nGRIEFPREVENTION (claims)\nadjustbonusclaimblocks <speler> <aantal> | claimslist <speler> | deleteclaim (alleen door een speler) | trust <speler> (alleen door een speler)\n\nCHUNKY (wereld voorladen)\nchunky world <wereld> | chunky center <x> <z> | chunky radius <aantal> | chunky start | chunky pause | chunky continue | chunky cancel | chunky progress\n\nCOREPROTECT (logs)\nco lookup user:<speler> time:1h | co lookup user:<speler> time:1d action:block | co near (alleen door een speler)\n\nOVERIG\nsv on|off <speler> (SuperVanish: onzichtbaar maken)\ndrivebackup backup (handmatige backup)\ngrim reload | grim alerts\nLibertyBans: ban, mute, kick en unban zijn in gebruik door Essentials, gebruik de eigen versie met het voorvoegsel libertybans: ervoor als dat nodig is, bv. libertybans:ban <speler> <duur> <reden>\n\nNIET MOGELIJK VANUIT DE CONSOLE\nWorldEdit-commando's met // (//copy, //paste, //set, //undo) en alles wat een selectie, een positie of een speler als uitvoerder nodig heeft (rg define, rg redefine, claims maken, co inspect).\n`;"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -2560,
+        240
+      ],
+      "id": "1dbd5662-fc60-4278-8b83-28fdeb6aa54f",
+      "name": "mc_commands"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://minecraft-mcp:8000/sse",
+        "serverTransport": "sse",
+        "authentication": "headerAuth",
+        "include": "selected",
+        "includeTools": [
+          "minecraft_command"
+        ],
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        -2032,
+        256
+      ],
+      "id": "d1bd35ef-8df8-4a70-8751-1dd8504a9b5a",
+      "name": "MCP Client",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "r7qAjPyomOEW1xep",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Voert één commando uit op de Minecraft-server via de console, zonder slash.\nVoorbeelden: say hallo, minecraft:list, whitelist add Speler.\nDeze tool geeft geen antwoord van de server terug. Lees daarna minecraft_log.",
+        "method": "POST",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/command",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.pterodactyl.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"command\": $fromAI(\"command\", \"Het volledige Minecraft-servercommando zonder slash, bijvoorbeeld say hello, list of whitelist add Speler\", \"string\") } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        -2368,
+        240
+      ],
+      "id": "614f1790-242d-4652-81d0-cffc77b299ee",
+      "name": "minecraft_command",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Leest het serverlog van de Minecraft-server. Gebruik dit ALTIJD na\nminecraft_command als je het resultaat van het commando nodig hebt.\nHet antwoord staat in de laatste regels onderaan.",
+        "url": "http://10.20.203.28/api/client/servers/5ed5eed2/files/contents?file=%2Flogs%2Flatest.log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        -2192,
+        240
+      ],
+      "id": "73504f55-2f2f-4e88-8968-c3ece61c2b62",
+      "name": "minecraft_log",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "h2MfPWYrnxuG3itO",
+          "name": "Pterodactyl API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## AI Chat \nDeze blokken zorgen ervoor dat je met een ai chat kan sturen naar de mc server en commando's kan meegeven of dingen vragen over de server.\nlink dashboard:\nhttp://10.20.236.220:5678/webhook/dashboard\nof (indien je toegang er tot hebt)\nhttp://localhost:5678/webhook/dashboard",
+        "height": 192,
+        "width": 448,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3056,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "6fd51a42-723b-4ed3-8a00-f9550125c89b",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Respond chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook status": {
+      "main": [
+        [
+          {
+            "node": "Resources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resources": {
+      "main": [
+        [
+          {
+            "node": "List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Respond status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond chat": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook chat": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mc_commands": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "minecraft_command": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "minecraft_log": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "0b12fa51-9869-4849-9048-c1b097545b46",
+  "activeVersionId": "0b12fa51-9869-4849-9048-c1b097545b46",
+  "versionCounter": 1102,
+  "triggerCount": 4,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-10-02T09:35:52.072Z",
+      "createdAt": "2026-10-02T09:35:52.072Z",
+      "role": "workflow:owner",
+      "workflowId": "VeCUgmzBsbhUbqfp",
+      "projectId": "JxAp4XewJAfaYKd8",
+      "project": {
+        "updatedAt": "2026-10-02T09:35:14.492Z",
+        "createdAt": "2026-10-02T09:22:11.095Z",
+        "id": "JxAp4XewJAfaYKd8",
+        "name": "Jason De Smet <jason.desmet@student.vives.be>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "258336ae-8b66-4d33-8684-b1b53762cfe5"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version 0b12fa51",
+    "description": ""
+  }
+}
