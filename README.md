@@ -1,292 +1,248 @@
-# Network Experience 2627: n8n Automation Hub
+# Network Experience 2627 - n8n
 
-Dit project bouwt een beheerd automatiseringsplatform met **n8n**, **PostgreSQL**, **SearXNG** en de **n8n AI Sandbox** op een Debian VM in Proxmox. Alles draait als Docker Compose stack.
+Deze repository bevat een n8n-automatiseringsomgeving en meerdere werkende of experimentele workflows voor:
 
-Het doel is een professionele basisinstallatie waarmee workflows veilig ontwikkeld, getest, beheerd en gedocumenteerd kunnen worden. De volledige projectopdracht (Must/Should/Could, acceptatietests, mijlpalen) staat in [`opdracht.md`](opdracht.md).
+- Minecraft-dashboard, whitelist en RCON/MCP;
+- Proxmox-dashboard en beheerchat;
+- Trello- en GitHub-tools;
+- infrastructuurprovisioning met Terraform en Ansible;
+- een centrale n8n-stack met PostgreSQL, SearXNG en een n8n-sandbox.
 
-## Inhoud
+De repository is een projectomgeving, geen kant-en-klare productie-installatie. Controleer credentials, netwerken, databaseschema's en beveiligingsinstellingen voordat je een workflow gebruikt.
 
-- [Inhoud van de repository](#inhoud-van-de-repository)
-- [Architectuur](#architectuur)
-- [Vereisten](#vereisten)
-- [Installatie](#installatie)
-- [Workflows](#workflows)
-- [Beheer](#beheer)
-- [Back-up en restore](#back-up-en-restore)
-- [Troubleshooting](#troubleshooting)
-- [Acceptatiecheck](#acceptatiecheck)
+## Snelstart
 
-## Inhoud van de repository
+### 1. Vereisten
 
-| Bestand / map                       | Doel                                                                 | In Git |
-|-------------------------------------|----------------------------------------------------------------------|--------|
-| `README.md`                         | Deze handleiding                                                     | Ja     |
-| `opdracht.md`                       | Projectopdracht en acceptatiecriteria                                | Ja     |
-| `compose.yml`                       | Docker Compose stack: n8n, runners, PostgreSQL, SearXNG, AI Sandbox  | Ja     |
-| `searxng-settings.yml`              | Configuratie voor SearXNG (HTML- en JSON-output)                     | Ja     |
-| `.env.example`                      | Voorbeeld van alle benodigde environmentvariabelen                   | Ja     |
-| `.env`                              | Lokale configuratie met echte, gegenereerde secrets                  | **Nee** |
-| `.gitignore`                        | Voorkomt dat secrets en runtimebestanden in Git terechtkomen         | Ja     |
-| `step1_n8n_installation`            | TODO: korte omschrijving toevoegen                                   | Ja     |
-| `step2_instructions_mcp_client.md`  | TODO: korte omschrijving toevoegen (n8n als MCP-client?)             | Ja     |
-| `workshop-proxmox-agent/`           | TODO: korte omschrijving toevoegen                                   | Ja     |
+Gebruik een Debian 12- of 13-VM met Docker Compose. Een VM is aanbevolen; een LXC-container is voor de n8n-sandbox niet geschikt.
 
-> De lokale `.env` is bewust niet bedoeld voor GitHub. Bewaar de waarden ook in de afgesproken vault, vooral `N8N_ENCRYPTION_KEY`.
+Minimaal voor de centrale stack:
 
-## Architectuur
+| Onderdeel | Advies |
+|---|---:|
+| CPU | 2 vCPU |
+| RAM | 4 GB |
+| Schijf | 32 GB |
+| Netwerk | Gebruik een vast LAN-IP |
 
-| Service           | Rol                                                                     | Poort (host) |
-|-------------------|-------------------------------------------------------------------------|--------------|
-| `n8n`             | Workflow engine en beheerinterface                                      | `5678`       |
-| `runners`         | n8n task runners voor Code nodes                                        | -            |
-| `postgres`        | Database van n8n (PostgreSQL 16)                                        | -            |
-| `searxng`         | Zoekmachine voor de AI-functies van n8n                                 | -            |
-| `sandbox-certs`   | Eenmalige container die de mTLS-certificaten voor de sandbox aanmaakt   | -            |
-| `sandbox-api`     | API van de n8n AI Sandbox                                               | -            |
-| `sandbox-runner-1`| Voert sandboxcode uit via Docker-in-Docker (`privileged`)               | -            |
+### 2. Installeer Docker
 
-Alleen n8n is bereikbaar van buiten de Docker-omgeving. Alle andere services praten onderling via het interne Docker-netwerk.
-
-## Vereisten
-
-- Een werkende Proxmox host
-- Toegang tot de VM via de Proxmox console of SSH
-- Een **Debian 13 VM** met minimaal:
-
-| Onderdeel | Minimum   |
-|-----------|----------:|
-| CPU       | 2 vCPU's  |
-| RAM       | 4 GB      |
-| Opslag    | 32 GB     |
-| OS        | Debian 13 |
-
-> Gebruik een **VM** en geen LXC-container. De AI Sandbox gebruikt Docker-in-Docker en heeft daarvoor een echte VM nodig.
-
-## Installatie
-
-Alle commando's voer je uit op de Debian VM.
-
-### Stap 1: Debian VM aanmaken en updaten
-
-Maak in Proxmox een nieuwe VM aan met de Debian 13 ISO en installeer Debian. Werk daarna het systeem bij en installeer `git`:
+Op Debian:
 
 ```bash
 sudo apt update
-sudo apt upgrade -y
-sudo apt install git openssl -y
+sudo apt install -y ca-certificates curl openssl
 ```
 
-### Stap 2: Docker en Docker Compose installeren
-
-Installeer de benodigde pakketten:
-
-```bash
-sudo apt-get install ca-certificates curl gnupg -y
-```
-
-Maak de map voor APT-sleutels aan:
-
-```bash
-sudo install -m 0755 -d /etc/apt/keyrings
-```
-
-Voeg de officiële Docker GPG-sleutel toe:
-
-```bash
-curl -fsSL https://download.docker.com/linux/debian/gpg | \
-  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-```
-
-Voeg de Docker repository toe:
-
-```bash
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-```
-
-Installeer Docker en de Compose plugin:
-
-```bash
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-```
-
-Controleer de installatie:
+Volg vervolgens de officiële Docker-installatie voor Debian. Controleer de installatie:
 
 ```bash
 sudo docker version
 sudo docker compose version
 ```
 
-### Stap 3: Repository clonen
+### 3. Start de centrale stack
 
-Clone deze repository. De bestanden `compose.yml` en `searxng-settings.yml` komen hiermee al op de juiste plaats, je hoeft ze dus **niet** zelf aan te maken.
-
-```bash
-git clone https://github.com/EwoudBoutje/network-experience-2627-n8n.git
-cd network-experience-2627-n8n
-```
-
-Alle volgende commando's voer je uit in deze map.
-
-### Stap 4: Environmentbestand maken
-
-Kopieer het voorbeeldbestand:
+Vanaf de repositorymap:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Vervang **alle** voorbeeldwaarden door eigen sterke secrets. Een veilige willekeurige waarde genereer je zo:
+Vervang alle voorbeeldwaarden door sterke, eigen geheimen. Maak bijvoorbeeld:
 
 ```bash
 openssl rand -hex 32
 ```
 
-| Variabele | Betekenis |
-|-----------|-----------|
-| `N8N_VERSION` | Versie van de n8n- en runners-image. Pin een vaste versie in plaats van `latest`, zodat de installatie reproduceerbaar blijft. |
-| `N8N_SANDBOX_VERSION` | Versie van de AI Sandbox images |
-| `N8N_RUNNERS_AUTH_TOKEN` | Gedeeld token tussen `n8n` en `runners` |
-| `SANDBOX_API_KEYS` | API-sleutel(s) waarmee `sandbox-api` aanvragen accepteert |
-| `N8N_SANDBOX_SERVICE_API_KEY` | API-sleutel die n8n gebruikt. **Moet dezelfde waarde hebben als `SANDBOX_API_KEYS`.** |
-| `SANDBOX_API_RUNNER_REGISTRATION_TOKEN` | Token waarmee de runner zich registreert bij de sandbox API |
-| `SANDBOX_API_RUNNER_API_KEY` | API-sleutel van de sandbox runner |
-| `SEARXNG_SECRET` | Secret van SearXNG |
-| `N8N_INSTANCE_AI_SEARXNG_URL` | Interne URL van SearXNG (standaard `http://searxng:8080`, niet aanpassen) |
-| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Databasegebruiker, wachtwoord en databasenaam |
-| `N8N_ENCRYPTION_KEY` | Sleutel waarmee n8n credentials versleutelt (minimaal 32 tekens) |
-| `GENERIC_TIMEZONE` | Tijdzone voor schedules, standaard `Europe/Brussels` |
-
-Belangrijk:
-
-- `N8N_ENCRYPTION_KEY` moet veilig bewaard worden in de afgesproken vault. Zonder deze sleutel zijn opgeslagen credentials na een restore onbruikbaar.
-- Commit nooit echte secrets naar GitHub. `.env` staat in `.gitignore`.
-
-Sla op met `CTRL+O`, bevestig met `Enter` en sluit af met `CTRL+X`.
-
-### Stap 5: Stack starten
+Start daarna:
 
 ```bash
+sudo docker compose config
 sudo docker compose up -d
-```
-
-De eerste start kan enkele minuten duren omdat Docker alle images moet downloaden. Controleer daarna de status:
-
-```bash
 sudo docker compose ps
 ```
 
-Controleer vooral of `postgres` en `sandbox-api` de status `healthy` krijgen. De container `sandbox-certs` hoort na afloop de status `exited (0)` te hebben: dat is correct, het is een eenmalige taak.
+Let op:
 
-Bekijk logs wanneer iets niet start:
+- `.env` bevat echte geheimen en moet **niet** in Git worden geplaatst.
+- Bewaar `N8N_ENCRYPTION_KEY` apart. Zonder dezelfde sleutel kun je opgeslagen n8n-credentials niet herstellen.
+- In de huidige [compose.yml](compose.yml) is n8n alleen gebonden aan `127.0.0.1:5679`. Gebruik voor toegang een SSH-tunnel of pas de poort en bind-adres bewust aan.
+- Gebruik `docker compose down -v` niet: hiermee worden ook de n8n- en databasevolumes verwijderd.
 
-```bash
-sudo docker compose logs -f
-```
-
-### Stap 6: n8n openen
-
-Zoek het IP-adres van de VM:
+Voor een SSH-tunnel:
 
 ```bash
-ip a
+ssh -L 5679:127.0.0.1:5679 <gebruiker>@<VM-IP>
 ```
 
-Open daarna op je eigen computer:
+Open daarna op je laptop:
 
 ```text
-http://<JOUW_VM_IP>:5678
+http://localhost:5679
 ```
 
-Als het n8n-instelscherm verschijnt, is de installatie gelukt. Zie [Troubleshooting](#troubleshooting) als je een foutmelding over een *secure cookie* krijgt.
+## Centrale configuratie
 
-> Deze HTTP-verbinding is bedoeld voor de testomgeving. De opdracht vraagt voor productie een niet-publieke beheerinterface en TLS via de afgesproken publicatieroute (reverse proxy). Open poort `5678` dus niet naar buiten.
+### Services
 
-### Stap 7: Accounts aanmaken
+| Service | Doel |
+|---|---|
+| `n8n` | Workfloweditor en uitvoeringsengine |
+| `postgres` | PostgreSQL-database voor n8n |
+| `runners` | Externe taakuitvoering voor Code-nodes |
+| `searxng` | Zoekservice voor workflows en AI |
+| `sandbox-certs` | Maakt eenmalig sandboxcertificaten aan |
+| `sandbox-api` | API voor de n8n-sandbox |
+| `sandbox-runner-1` | Voert sandboxtaken uit met Docker-in-Docker |
 
-Maak in n8n:
-
-1. Een **Owner account** voor beheer.
-2. Een apart **Member account** voor dagelijks gebruik via **Settings > Users**.
-
-
-
-## Beheer
-
-### Beheerafspraken
-
-- Gebruik het Owner account alleen voor beheer.
-- Gebruik een Member account voor normale workflowontwikkeling.
-- Bewaar credentials alleen in n8n of in de afgesproken vault.
-- Bewaar de `N8N_ENCRYPTION_KEY` apart en veilig.
-- Exporteer workflows zonder credentials.
-- Commit geen `.env` bestand met echte waarden naar GitHub.
-- Documenteer wijzigingen aan workflows in Git.
+Het bestand [.env.example](.env.example) bevat de basisvariabelen voor database, n8n, runners en SearXNG. De sandboxvariabelen die worden verwacht door [compose.yml](compose.yml), zoals de sandbox API- en runner-tokens, moeten ook expliciet worden gecontroleerd en ingevuld voordat de volledige stack wordt gebruikt.
 
 ### Handige commando's
 
-Voer deze uit in de projectmap.
-
-| Actie | Commando |
-|-------|----------|
-| Containers bekijken | `sudo docker compose ps` |
-| Logs volgen (alles) | `sudo docker compose logs -f` |
-| Logs van één service | `sudo docker compose logs -f n8n` |
-| Stack stoppen | `sudo docker compose down` |
-| Stack (opnieuw) starten | `sudo docker compose up -d` |
-| Images updaten | `sudo docker compose pull && sudo docker compose up -d` |
-
-> Gebruik **niet** `docker compose down -v`: de optie `-v` verwijdert ook de volumes met de database en n8n-data.
-
-## Back-up en restore
-
-Voor herstelbaarheid moeten minstens deze onderdelen veilig bewaard worden:
-
-- PostgreSQL databaseback-up
-- n8n workflowexports zonder credentials
-- `N8N_ENCRYPTION_KEY`
-- Documentatie van gebruikte credentials zonder geheime waarden
-- Runbook voor restore en credentialrotatie
-
-**Database back-up maken:**
-
 ```bash
-sudo docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup_$(date +%F).sql
+# Status en logs
+sudo docker compose ps
+sudo docker compose logs -f
+sudo docker compose logs -f n8n
+
+# Starten, stoppen en wijzigingen toepassen
+sudo docker compose up -d
+sudo docker compose stop
+sudo docker compose down
+
+# Alleen containers en images bijwerken
+sudo docker compose pull
+sudo docker compose up -d
 ```
 
-**Database terugzetten** (in een aparte testinstantie of op een lege database):
+## Workflows in deze repository
+
+Workflows staan als JSON-export in `n8n-workflows/` en worden ook per onderwerp gedocumenteerd.
+
+| Onderdeel | Locatie | Status / gebruik |
+|---|---|---|
+| Minecraft-dashboard en whitelist | [Minecraft_dashboard/README.md](Minecraft_dashboard/README.md) | MCP/RCON-, Pterodactyl-, dashboard- en whitelistworkflow |
+| Minecraft MCP-server | [Minecraft_dashboard/minecraft-mcp/compose.yaml](Minecraft_dashboard/minecraft-mcp/compose.yaml) | Lokale MCP-server voor Minecraft-consolecommando's |
+| Proxmox-agent en dashboard | [Proxmox_agent_dashboard/README.md](Proxmox_agent_dashboard/README.md) | Proxmox-chatagent en VM-dashboard |
+| Live Proxmox-dashboard | [Proxmox_agent_dashboard/proxmox-dashboard-live/README.md](Proxmox_agent_dashboard/proxmox-dashboard-live/README.md) | JWT-, live-data- en dashboardvariant |
+| Trello en GitHub | [Trello/README.md](Trello/README.md) | Chatagent met MCP-registrytools |
+| Terraform en Ansible | [ansible-terraform-agent/README.md](ansible-terraform-agent/README.md) | Proefopzet voor VM-provisioning en menselijke goedkeuring |
+| Geavanceerde workshop | [workshop-proxmox-agent/Stap1.md](workshop-proxmox-agent/Stap1.md) | Stapsgewijze installatie van ProxmoxMCP-Plus |
+| Templates | [templates/README.md](templates/README.md) | Nog niet geïmplementeerde voorbeelden |
+
+De volledige JSON-exports staan onder [n8n-workflows/](n8n-workflows/).
+
+### Een workflow toevoegen
+
+1. Open n8n.
+2. Kies **Import from File**.
+3. Selecteer het gewenste JSON-bestand.
+4. Controleer alle nodes en vervang credentialverwijzingen door eigen credentials.
+5. Vul hosts, API-URL's, databasegegevens en toegestane tools aan.
+6. Test eerst in een testomgeving.
+7. Controleer foutpaden en activeer/publiceer pas daarna.
+
+Exporteer workflows zonder productiesecrets. Credential-ID's kunnen in een export blijven staan, maar de geheime waarden horen daar niet in.
+
+## Belangrijke bestanden
+
+| Bestand/map | Beschrijving |
+|---|---|
+| [compose.yml](compose.yml) | Centrale Docker Compose-stack |
+| [.env.example](.env.example) | Voorbeeld van centrale omgevingsvariabelen |
+| [searxng-settings.yml](searxng-settings.yml) | HTML- en JSON-instellingen voor SearXNG |
+| [minecraft-whitelist-schema.sql](minecraft-whitelist-schema.sql) | PostgreSQL-schema voor de Minecraft-whitelist |
+| [opdracht.md](opdracht.md) | Projectopdracht, eisen en acceptatietests |
+| [n8n-workflows/](n8n-workflows/) | Workflowexports per onderwerp |
+| [step1_n8n_installation](step1_n8n_installation) | Oudere, eenvoudige basisinstallatie van n8n |
+| [step2_instructions_mcp_client.md](step2_instructions_mcp_client.md) | Voorbeeld voor n8n en Minecraft-MCP |
+
+## Database en Minecraft
+
+Het bestand [minecraft-whitelist-schema.sql](minecraft-whitelist-schema.sql) maakt het basisschema in de PostgreSQL-database. Controleer eerst databasegebruikers, rollen en doeldatabase.
+
+Het huidige schema en bepaalde Minecraft-workflowexports zijn niet volledig gelijk aan elkaar. De echte wijzigingen in `invites`, `registrations` en de portal moeten daarom eerst in een testdatabase worden vergeleken. Controleer daarnaast altijd:
+
+- PostgreSQL-schema-eigenaar;
+- ingevulde `search_path`;
+- toegangsrechten voor n8n;
+- toevoeging van `pgcrypto` wanneer `gen_random_bytes` of `digest` wordt gebruikt;
+- uitschakeling van destructieve testnodes;
+- geen echte registraties verwijderen tijdens tests.
+
+## Beveiliging
+
+### Basisregels
+
+- Gebruik HTTPS/reverse proxy voor n8n buiten een vertrouwd lokaal netwerk.
+- Stel geen beheerpoorten publiek open.
+- Gebruik verschillende accounts voor beheer en uitvoering.
+- Bewaar API-, RCON-, database- en MCP-geheimen buiten Git.
+- Geef API-tokens alleen leesrechten die nodig zijn.
+- Gebruik menselijke goedkeuring voor acties met impact.
+- Voer destructieve acties alleen uit op een goedgekeurde testomgeving.
+- Test dubbele gebeurtenissen en controleer idempotentie.
+- Beperk retries en stel een time-out in op externe HTTP- en MCP-aanroepen.
+- Log geen persoonsgegevens, credentials of volledige tokens.
+
+### MCP en externe systemen
+
+Een MCP-tool of AI-resultaat is geen bevestiging dat een externe actie geslaagd is. Controleer serverresponsen en registreer:
+
+- wie de actie heeft gevraagd;
+- welke workflow en tool zijn uitgevoerd;
+- welke doelidentiteit of VM is geraakt;
+- of de actie definitief geslaagd, mislukt of onzeker is.
+
+MCP-tools die RCON of Proxmox kunnen wijzigen, mogen alleen in een vertrouwde omgeving worden aangeboden.
+
+## Back-up
+
+Een minimale back-up bevat:
+
+- PostgreSQL-database;
+- n8n-workflowexports zonder credentials;
+- `N8N_ENCRYPTION_KEY`;
+- MCP-, API- en databaseconfiguratie zonder geheime waarden;
+- een herstelprocedure.
+
+Maak een PostgreSQL-back-up:
 
 ```bash
-cat backup_<DATUM>.sql | sudo docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
+sudo docker compose exec -T postgres \
+  sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' \
+  > "backup-$(date +%F).sql"
 ```
 
-Een restore werkt alleen als dezelfde `N8N_ENCRYPTION_KEY` gebruikt wordt als bij de back-up.
+Test herstel altijd in een aparte database of instantie. Gebruik bij een restore dezelfde `N8N_ENCRYPTION_KEY` als op het moment van de back-up.
 
-## Troubleshooting
+## Problemen oplossen
 
-| Probleem | Oplossing |
-|----------|-----------|
-| n8n toont een melding over een *secure cookie* bij `http://<JOUW_VM_IP>:5678` | n8n verwacht HTTPS, behalve op `localhost`. Gebruik een SSH-tunnel (`ssh -L 5678:localhost:5678 <gebruiker>@<JOUW_VM_IP>`) en open `http://localhost:5678`, of publiceer n8n via een reverse proxy met TLS. |
-| `sandbox-api` wordt niet `healthy` | Bekijk `sudo docker compose logs sandbox-certs sandbox-api`. Controleer of de waarden in `.env` ingevuld zijn en `N8N_SANDBOX_VERSION` bestaat. |
-| `sandbox-runner-1` start niet | Controleer dat je een VM gebruikt en geen LXC-container (Docker-in-Docker). |
-| n8n start niet na een wijziging in `.env` | Gebruik `sudo docker compose up -d` opnieuw: Compose maakt de container opnieuw aan met de nieuwe waarden. |
-| Credentials werken niet meer na een restore | De `N8N_ENCRYPTION_KEY` is niet dezelfde als bij de back-up. |
+| Probleem | Controle |
+|---|---|
+| n8n is niet bereikbaar op poort 5678 | De huidige stack bindt op loopbackpoort 5679: `127.0.0.1:5679`; controleer met `docker compose ps` |
+| Secure-cookie waarschuwing | Gebruik HTTPS of een SSH-tunnel naar localhost |
+| PostgreSQL is niet healthy | Controleer `.env`, Docker-volumes en `docker compose logs postgres` |
+| Sandbox start niet | Controleer alle sandbox-variabelen, de n8n-sandboxversie en logs van `sandbox-certs` en `sandbox-api` |
+| Docker kan de sandbox niet starten | Controleer of Docker op een VM draait en niet in een beperkte LXC-container |
+| MCP-tool geeft 401 | Controleer het Bearer-token, de MCP-credential en de MCP-serverconfiguratie |
+| MCP-service is niet bereikbaar | Controleer Docker-netwerk, servicenaam, poort en containerlogs |
+| Restore toont ongebruikte credentials | Gebruik dezelfde `N8N_ENCRYPTION_KEY` als in de oorspronkelijke installatie |
+| Gegevens verdwijnen na restart | Gebruik geen `down -v`; controleer of de Docker-volumes bestaan |
 
-## Acceptatiecheck
+## Voor productie gereed
 
-De installatie is klaar wanneer:
+Een installatie is pas klaar wanneer de volgende punten aantoonbaar zijn:
 
-- [ ] n8n bereikbaar is via `http://<JOUW_VM_IP>:5678` (of via de afgesproken TLS-route)
-- [ ] `postgres` de status `healthy` heeft
-- [ ] `sandbox-api` de status `healthy` heeft
-- [ ] er een Owner account bestaat
-- [ ] er een apart Member account bestaat
-- [ ] de encryptiesleutel veilig in de vault staat
-- [ ] echte secrets niet in GitHub staan
-- [ ] een database back-up gemaakt en getest is
+- [ ] n8n is afgeschermd en gebruikt HTTPS;
+- [ ] PostgreSQL is ondersteund en geback-upt;
+- [ ] de encryptiesleutel staat veilig in een vault;
+- [ ] beheer- en uitvoeringsgebruikers zijn gescheiden;
+- [ ] credentials staan niet in Git;
+- [ ] workflows hebben begrensde retries en foutafhandeling;
+- [ ] destructieve acties vragen menselijke goedkeuring;
+- [ ] workflowexports zijn schoon en bijgehouden;
+- [ ] een database- en configuratierecovery is getest;
+- [ ] logs, monitoring en runbooks zijn ingericht.
