@@ -215,15 +215,7 @@ Maak in n8n:
 1. Een **Owner account** voor beheer.
 2. Een apart **Member account** voor dagelijks gebruik via **Settings > Users**.
 
-## Workflows
 
-> TODO: vul deze tabel aan met de drie gekozen workflows (zie `opdracht.md`: één geplande, één event/webhook, één goedkeuringsflow) en de bestanden in deze repository.
-
-| Workflow | Trigger | Integraties | Bestand |
-|----------|---------|-------------|---------|
-| TODO     | TODO    | TODO        | TODO    |
-
-Workflows worden **zonder credentials** geëxporteerd en in Git bewaard.
 
 ## Beheer
 
