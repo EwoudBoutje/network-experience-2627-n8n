@@ -1,428 +1,300 @@
-# Network Experience 2026–2027 – n8n Automation
+# Network Experience 2627: n8n Automation Hub
 
-Dit project bevat verschillende automatiseringen die gebouwd zijn met **n8n**. De workflows maken gebruik van AI-agents, MCP-servers en externe diensten.
+Dit project bouwt een beheerd automatiseringsplatform met **n8n**, **PostgreSQL**, **SearXNG** en de **n8n AI Sandbox** op een Debian VM in Proxmox. Alles draait als Docker Compose stack.
 
-Het project bestaat uit een centrale n8n-installatie en verschillende afzonderlijke automatiseringen.
+Het doel is een professionele basisinstallatie waarmee workflows veilig ontwikkeld, getest, beheerd en gedocumenteerd kunnen worden. De volledige projectopdracht (Must/Should/Could, acceptatietests, mijlpalen) staat in [`opdracht.md`](opdracht.md).
 
 ## Inhoud
 
-- [Network Experience 2026–2027 – n8n Automation](#network-experience-20262027--n8n-automation)
-  - [Inhoud](#inhoud)
-  - [Projectoverzicht](#projectoverzicht)
-  - [Projectstructuur](#projectstructuur)
-  - [Benodigdheden](#benodigdheden)
-  - [Installatie](#installatie)
-    - [1. Docker installeren](#1-docker-installeren)
-    - [2. Repository clonen](#2-repository-clonen)
-    - [3. Environment variables configureren](#3-environment-variables-configureren)
-    - [4. De centrale omgeving starten](#4-de-centrale-omgeving-starten)
-  - [n8n starten](#n8n-starten)
-  - [Workflows importeren](#workflows-importeren)
-  - [Configuratie en IP-adressen](#configuratie-en-ip-adressen)
-    - [Waar moet je dit aanpassen?](#waar-moet-je-dit-aanpassen)
-  - [Credentials en beveiliging](#credentials-en-beveiliging)
-  - [Documentatie per onderdeel](#documentatie-per-onderdeel)
-    - [Minecraft Dashboard](#minecraft-dashboard)
-  - [Minecraft Whitelist Portal](#minecraft-whitelist-portal)
-    - [Trello](#trello)
-    - [Proxmox Agent Dashboard](#proxmox-agent-dashboard)
-    - [Proxmox MCP Workshop](#proxmox-mcp-workshop)
-  - [Beheer](#beheer)
-    - [Containers bekijken](#containers-bekijken)
-    - [Logs bekijken](#logs-bekijken)
-    - [Containers opnieuw starten](#containers-opnieuw-starten)
-    - [Omgeving stoppen](#omgeving-stoppen)
-  - [Back-ups](#back-ups)
-  - [Bekende aandachtspunten](#bekende-aandachtspunten)
+- [Inhoud van de repository](#inhoud-van-de-repository)
+- [Architectuur](#architectuur)
+- [Vereisten](#vereisten)
+- [Installatie](#installatie)
+- [Workflows](#workflows)
+- [Beheer](#beheer)
+- [Back-up en restore](#back-up-en-restore)
+- [Troubleshooting](#troubleshooting)
+- [Acceptatiecheck](#acceptatiecheck)
 
----
+## Inhoud van de repository
 
-## Projectoverzicht
+| Bestand / map                       | Doel                                                                 | In Git |
+|-------------------------------------|----------------------------------------------------------------------|--------|
+| `README.md`                         | Deze handleiding                                                     | Ja     |
+| `opdracht.md`                       | Projectopdracht en acceptatiecriteria                                | Ja     |
+| `compose.yml`                       | Docker Compose stack: n8n, runners, PostgreSQL, SearXNG, AI Sandbox  | Ja     |
+| `searxng-settings.yml`              | Configuratie voor SearXNG (HTML- en JSON-output)                     | Ja     |
+| `.env.example`                      | Voorbeeld van alle benodigde environmentvariabelen                   | Ja     |
+| `.env`                              | Lokale configuratie met echte, gegenereerde secrets                  | **Nee** |
+| `.gitignore`                        | Voorkomt dat secrets en runtimebestanden in Git terechtkomen         | Ja     |
+| `step1_n8n_installation`            | TODO: korte omschrijving toevoegen                                   | Ja     |
+| `step2_instructions_mcp_client.md`  | TODO: korte omschrijving toevoegen (n8n als MCP-client?)             | Ja     |
+| `workshop-proxmox-agent/`           | TODO: korte omschrijving toevoegen                                   | Ja     |
 
-De centrale omgeving bestaat uit n8n, PostgreSQL, SearXNG en de AI Sandbox.
+> De lokale `.env` is bewust niet bedoeld voor GitHub. Bewaar de waarden ook in de afgesproken vault, vooral `N8N_ENCRYPTION_KEY`.
 
-De verschillende workflows kunnen externe diensten aanspreken via MCP-servers.
+## Architectuur
 
-| Onderdeel | Functie |
-|---|---|
-| n8n | Uitvoeren en beheren van workflows |
-| PostgreSQL | Database voor n8n |
-| SearXNG | Zoekmachine voor AI-agents |
-| AI Sandbox | Afgeschermde omgeving voor bepaalde AI-acties |
-| Minecraft MCP | Communicatie met de Minecraft-omgeving |
-| Proxmox MCP | Communicatie met Proxmox |
-| Trello MCP | Integratie met Trello |
+| Service           | Rol                                                                     | Poort (host) |
+|-------------------|-------------------------------------------------------------------------|--------------|
+| `n8n`             | Workflow engine en beheerinterface                                      | `5678`       |
+| `runners`         | n8n task runners voor Code nodes                                        | -            |
+| `postgres`        | Database van n8n (PostgreSQL 16)                                        | -            |
+| `searxng`         | Zoekmachine voor de AI-functies van n8n                                 | -            |
+| `sandbox-certs`   | Eenmalige container die de mTLS-certificaten voor de sandbox aanmaakt   | -            |
+| `sandbox-api`     | API van de n8n AI Sandbox                                               | -            |
+| `sandbox-runner-1`| Voert sandboxcode uit via Docker-in-Docker (`privileged`)               | -            |
 
-## Projectstructuur
+Alleen n8n is bereikbaar van buiten de Docker-omgeving. Alle andere services praten onderling via het interne Docker-netwerk.
 
-```text
-network-experience-2627-n8n/
-│
-├── compose.yml
-├── .env.example
-├── .gitignore
-├── README.md
-├── opdracht.md
-├── searxng-settings.yml
-│
-├── step1_n8n_installation
-├── step2_instructions_mcp_client.md
-│
-├── minecraft-whitelist-schema.sql
-│
-├── Minecraft_dashboard/
-│   ├── README.md
-│   ├── Minecraft_Whitelist.json
-│   ├── Minecraft_Whitelist_Portal/
-│   │   ├── README.md
-│   │   └── workflow.json
-│   └── minecraft-mcp/
-│       ├── compose.yaml
-│       ├── Dockerfile
-│       └── server.py
-│
-├── Trello/
-│   ├── README.md
-│   └── workflow.json
-│
-├── Proxmox_agent_dashboard/
-│   ├── README.md
-│   └── workflow.json
-│
-└── workshop-proxmox-agent/
-    ├── Stap1.md
-    ├── Stap2.md
-    ├── Stap3.md
-    ├── Stap4.md
-    ├── Stap5.md
-    └── Stap6.md
-```
+## Vereisten
 
-## Benodigdheden
+- Een werkende Proxmox host
+- Toegang tot de VM via de Proxmox console of SSH
+- Een **Debian 13 VM** met minimaal:
 
-Voor de installatie heb je het volgende nodig:
+| Onderdeel | Minimum   |
+|-----------|----------:|
+| CPU       | 2 vCPU's  |
+| RAM       | 4 GB      |
+| Opslag    | 32 GB     |
+| OS        | Debian 13 |
 
-- Een Debian 13 VM.
-- Docker Engine.
-- Docker Compose-plugin.
-- Git.
-- Een werkende netwerkverbinding.
-- Een n8n-account.
-- De nodige API-credentials voor de workflows die je wilt gebruiken.
-
-De benodigde resources zijn afhankelijk van het aantal actieve workflows en de gebruikte AI-modellen.
+> Gebruik een **VM** en geen LXC-container. De AI Sandbox gebruikt Docker-in-Docker en heeft daarvoor een echte VM nodig.
 
 ## Installatie
 
-### 1. Docker installeren
+Alle commando's voer je uit op de Debian VM.
 
-Werk Debian eerst bij:
+### Stap 1: Debian VM aanmaken en updaten
+
+Maak in Proxmox een nieuwe VM aan met de Debian 13 ISO en installeer Debian. Werk daarna het systeem bij en installeer `git`:
 
 ```bash
 sudo apt update
 sudo apt upgrade -y
+sudo apt install git openssl -y
 ```
 
-Installeer Docker volgens de officiële documentatie:
+### Stap 2: Docker en Docker Compose installeren
 
-https://docs.docker.com/engine/install/debian/
+Installeer de benodigde pakketten:
+
+```bash
+sudo apt-get install ca-certificates curl gnupg -y
+```
+
+Maak de map voor APT-sleutels aan:
+
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+```
+
+Voeg de officiële Docker GPG-sleutel toe:
+
+```bash
+curl -fsSL https://download.docker.com/linux/debian/gpg | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+```
+
+Voeg de Docker repository toe:
+
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+Installeer Docker en de Compose plugin:
+
+```bash
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+```
 
 Controleer de installatie:
 
 ```bash
-docker --version
-docker compose version
+sudo docker version
+sudo docker compose version
 ```
 
-### 2. Repository clonen
+### Stap 3: Repository clonen
+
+Clone deze repository. De bestanden `compose.yml` en `searxng-settings.yml` komen hiermee al op de juiste plaats, je hoeft ze dus **niet** zelf aan te maken.
 
 ```bash
 git clone https://github.com/EwoudBoutje/network-experience-2627-n8n.git
 cd network-experience-2627-n8n
 ```
 
-### 3. Environment variables configureren
+Alle volgende commando's voer je uit in deze map.
 
-Maak een eigen `.env`-bestand op basis van het voorbeeld:
+### Stap 4: Environmentbestand maken
+
+Kopieer het voorbeeldbestand:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Vul de nodige waarden in.
-
-**Belangrijk:**
-
-- Gebruik eigen wachtwoorden, tokens en encryption keys.
-- Deel je `.env`-bestand nooit via GitHub.
-- Gebruik niet zomaar de voorbeeldwaarden voor een echte installatie.
-
-### 4. De centrale omgeving starten
-
-Start de Docker-containers:
+Vervang **alle** voorbeeldwaarden door eigen sterke secrets. Een veilige willekeurige waarde genereer je zo:
 
 ```bash
-docker compose up -d
+openssl rand -hex 32
 ```
 
-Controleer de status:
+| Variabele | Betekenis |
+|-----------|-----------|
+| `N8N_VERSION` | Versie van de n8n- en runners-image. Pin een vaste versie in plaats van `latest`, zodat de installatie reproduceerbaar blijft. |
+| `N8N_SANDBOX_VERSION` | Versie van de AI Sandbox images |
+| `N8N_RUNNERS_AUTH_TOKEN` | Gedeeld token tussen `n8n` en `runners` |
+| `SANDBOX_API_KEYS` | API-sleutel(s) waarmee `sandbox-api` aanvragen accepteert |
+| `N8N_SANDBOX_SERVICE_API_KEY` | API-sleutel die n8n gebruikt. **Moet dezelfde waarde hebben als `SANDBOX_API_KEYS`.** |
+| `SANDBOX_API_RUNNER_REGISTRATION_TOKEN` | Token waarmee de runner zich registreert bij de sandbox API |
+| `SANDBOX_API_RUNNER_API_KEY` | API-sleutel van de sandbox runner |
+| `SEARXNG_SECRET` | Secret van SearXNG |
+| `N8N_INSTANCE_AI_SEARXNG_URL` | Interne URL van SearXNG (standaard `http://searxng:8080`, niet aanpassen) |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Databasegebruiker, wachtwoord en databasenaam |
+| `N8N_ENCRYPTION_KEY` | Sleutel waarmee n8n credentials versleutelt (minimaal 32 tekens) |
+| `GENERIC_TIMEZONE` | Tijdzone voor schedules, standaard `Europe/Brussels` |
+
+Belangrijk:
+
+- `N8N_ENCRYPTION_KEY` moet veilig bewaard worden in de afgesproken vault. Zonder deze sleutel zijn opgeslagen credentials na een restore onbruikbaar.
+- Commit nooit echte secrets naar GitHub. `.env` staat in `.gitignore`.
+
+Sla op met `CTRL+O`, bevestig met `Enter` en sluit af met `CTRL+X`.
+
+### Stap 5: Stack starten
 
 ```bash
-docker compose ps
+sudo docker compose up -d
 ```
 
-Bekijk indien nodig de logs:
+De eerste start kan enkele minuten duren omdat Docker alle images moet downloaden. Controleer daarna de status:
 
 ```bash
-docker compose logs -f
+sudo docker compose ps
 ```
 
-## n8n starten
+Controleer vooral of `postgres` en `sandbox-api` de status `healthy` krijgen. De container `sandbox-certs` hoort na afloop de status `exited (0)` te hebben: dat is correct, het is een eenmalige taak.
 
-Open n8n via:
+Bekijk logs wanneer iets niet start:
+
+```bash
+sudo docker compose logs -f
+```
+
+### Stap 6: n8n openen
+
+Zoek het IP-adres van de VM:
+
+```bash
+ip a
+```
+
+Open daarna op je eigen computer:
 
 ```text
-http://<IP-ADRES-VAN-DE-VM>:5678
+http://<JOUW_VM_IP>:5678
 ```
 
-Bij de eerste start moet je een owner-account aanmaken.
+Als het n8n-instelscherm verschijnt, is de installatie gelukt. Zie [Troubleshooting](#troubleshooting) als je een foutmelding over een *secure cookie* krijgt.
 
-Daarna kan je workflows importeren en de nodige credentials configureren.
+> Deze HTTP-verbinding is bedoeld voor de testomgeving. De opdracht vraagt voor productie een niet-publieke beheerinterface en TLS via de afgesproken publicatieroute (reverse proxy). Open poort `5678` dus niet naar buiten.
 
-## Workflows importeren
+### Stap 7: Accounts aanmaken
 
-De workflows worden als JSON-bestanden bijgehouden in deze repository.
+Maak in n8n:
 
-Om een workflow te importeren:
+1. Een **Owner account** voor beheer.
+2. Een apart **Member account** voor dagelijks gebruik via **Settings > Users**.
 
-1. Open n8n.
-2. Ga naar **Overview** of **Workflows**.
-3. Kies de optie om een workflow te importeren.
-4. Selecteer het juiste JSON-bestand.
-5. Controleer de configuratie van de nodes.
-6. Stel de vereiste credentials in.
-7. Test de workflow voordat je deze activeert.
+## Workflows
 
-De workflowbestanden zijn exports. Ze bevatten niet automatisch alle benodigde API-credentials, externe configuratie of actieve verbindingen.
+> TODO: vul deze tabel aan met de drie gekozen workflows (zie `opdracht.md`: één geplande, één event/webhook, één goedkeuringsflow) en de bestanden in deze repository.
 
-Een geïmporteerde workflow moet dus eerst gecontroleerd en geconfigureerd worden.
+| Workflow | Trigger | Integraties | Bestand |
+|----------|---------|-------------|---------|
+| TODO     | TODO    | TODO        | TODO    |
 
-## Configuratie en IP-adressen
-
-Sommige workflows moeten verbinding maken met diensten op een ander systeem.
-
-IP-adressen en URL's kunnen verschillen per installatie. Daarom zijn enkele adressen in de Minecraft-workflow vervangen door placeholders.
-
-Vervang deze placeholders door de adressen van je eigen omgeving.
-
-| Placeholder | Betekenis |
-|---|---|
-| `PTERODACTYL_HOST` | Hostname of IP-adres van de Pterodactyl-server |
-| `N8N_HOST` | Hostname of IP-adres waarop n8n bereikbaar is |
-
-### Waar moet je dit aanpassen?
-
-Open na het importeren de workflow **Minecraft Whitelist**.
-
-Zoek de betreffende HTTP Request- en URL-configuraties en vervang:
-
-```text
-http://PTERODACTYL_HOST
-```
-
-door bijvoorbeeld:
-
-```text
-http://192.168.1.100
-```
-
-Vervang ook:
-
-```text
-http://N8N_HOST:5678
-```
-
-door bijvoorbeeld:
-
-```text
-http://192.168.1.50:5678
-```
-
-Gebruik uiteraard de adressen van je eigen omgeving.
-
-**Let op:** vervang alleen de hostname of het IP-adres. De bestaande `http://` en eventuele poort moeten behouden blijven.
-
-Controleer daarnaast de MCP-endpoints. De standaard Minecraft MCP-configuratie gebruikt:
-
-```text
-http://minecraft-mcp:8000
-```
-
-De Proxmox MCP-configuratie gebruikt:
-
-```text
-http://proxmox-mcp:8000/mcp
-```
-
-Deze Docker-servicenamen werken alleen wanneer de betrokken containers op een gedeeld Docker-netwerk zitten.
-
-## Credentials en beveiliging
-
-De workflows kunnen verbinding maken met externe diensten zoals:
-
-- OpenAI of een andere AI-provider.
-- Trello.
-- GitHub.
-- Proxmox.
-- Pterodactyl.
-
-Configureer de benodigde credentials via **Credentials** in n8n.
-
-Gebruik geen API-tokens, wachtwoorden of andere geheimen rechtstreeks in workflowbestanden.
-
-De workflowbestanden in GitHub bevatten configuratie, maar je moet zelf de nodige credentials aanmaken en koppelen.
-
-## Documentatie per onderdeel
-
-Elk onderdeel heeft een eigen README met de specifieke installatie- en configuratiestappen.
-
-### Minecraft Dashboard
-
-[Minecraft Dashboard – README.md](Minecraft_dashboard/README.md)
-
-Bevat onder andere:
-
-- Importeren en configureren van de Minecraft-workflow.
-- Installatie van de Minecraft MCP-server.
-- Docker-configuratie.
-- Configuratie van de Pterodactyl-verbinding.
-- Minecraft Whitelist-database en SQL-schema.
-- Testen van de workflow.
-
-De SQL-configuratie staat in:
-
-```text
-minecraft-whitelist-schema.sql
-```
-
-Controleer vóór het uitvoeren van dit bestand of de juiste database en databasegebruiker bestaan.
-
-De Minecraft MCP-server staat in:
-
-```text
-Minecraft_dashboard/minecraft-mcp/
-```
-
-De MCP-server moet bereikbaar zijn vanuit n8n. Zorg daarom dat beide containers op een gedeeld Docker-netwerk zitten.
-
-### Minecraft Whitelist Portal
-
-[Minecraft Whitelist Portal – README.md](Minecraft_dashboard/Minecraft_Whitelist_Portal/README.md)
-
-De aparte portal laat studenten via Authentik aanmelden met hun schoolaccount en hun Minecraft Java-gebruikersnaam registreren. De registratie wordt gekoppeld aan het R-nummer en opgeslagen in PostgreSQL.
-
-De workflow staat in:
-
-`Minecraft_dashboard/Minecraft_Whitelist_Portal/workflow.json`
-
-De workflow ondersteunt het vervangen van gebruikersnamen en een automatische semesterreset op 1 februari en 1 september. Raadpleeg de aparte README voor installatie, Authentik, Pterodactyl en beveiliging.
-
-### Trello
-
-[Trello – README.md](Trello/README.md)
-
-Bevat onder andere:
-
-- Importeren van de Trello-workflow.
-- Trello MCP-configuratie.
-- Aanmaken van Trello-credentials.
-- GitHub MCP-configuratie.
-- Testen van de AI-agent.
-
-De workflow gebruikt externe MCP-integraties. Controleer of deze servers beschikbaar zijn en of de juiste credentials gekoppeld zijn.
-
-### Proxmox Agent Dashboard
-
-[Proxmox Agent Dashboard – README.md](Proxmox_agent_dashboard/README.md)
-
-Bevat onder andere:
-
-- Importeren van de Proxmox-workflow.
-- Installatie en configuratie van de Proxmox MCP-server.
-- Docker-netwerkconfiguratie.
-- Dashboard-webhook.
-- Basic Authentication.
-- Testen van de VM-informatie.
-
-De Proxmox MCP-server moet bereikbaar zijn vanuit n8n. De standaardconfiguratie gebruikt het endpoint:
-
-```text
-http://proxmox-mcp:8000/mcp
-```
-
-### Proxmox MCP Workshop
-
-De afzonderlijke workshopstappen vind je in:
-
-[Workshop Proxmox Agent](workshop-proxmox-agent/)
-
-Deze map bevat de installatie- en configuratiestappen van de Proxmox Agent.
+Workflows worden **zonder credentials** geëxporteerd en in Git bewaard.
 
 ## Beheer
 
-### Containers bekijken
+### Beheerafspraken
+
+- Gebruik het Owner account alleen voor beheer.
+- Gebruik een Member account voor normale workflowontwikkeling.
+- Bewaar credentials alleen in n8n of in de afgesproken vault.
+- Bewaar de `N8N_ENCRYPTION_KEY` apart en veilig.
+- Exporteer workflows zonder credentials.
+- Commit geen `.env` bestand met echte waarden naar GitHub.
+- Documenteer wijzigingen aan workflows in Git.
+
+### Handige commando's
+
+Voer deze uit in de projectmap.
+
+| Actie | Commando |
+|-------|----------|
+| Containers bekijken | `sudo docker compose ps` |
+| Logs volgen (alles) | `sudo docker compose logs -f` |
+| Logs van één service | `sudo docker compose logs -f n8n` |
+| Stack stoppen | `sudo docker compose down` |
+| Stack (opnieuw) starten | `sudo docker compose up -d` |
+| Images updaten | `sudo docker compose pull && sudo docker compose up -d` |
+
+> Gebruik **niet** `docker compose down -v`: de optie `-v` verwijdert ook de volumes met de database en n8n-data.
+
+## Back-up en restore
+
+Voor herstelbaarheid moeten minstens deze onderdelen veilig bewaard worden:
+
+- PostgreSQL databaseback-up
+- n8n workflowexports zonder credentials
+- `N8N_ENCRYPTION_KEY`
+- Documentatie van gebruikte credentials zonder geheime waarden
+- Runbook voor restore en credentialrotatie
+
+**Database back-up maken:**
 
 ```bash
-docker compose ps
+sudo docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup_$(date +%F).sql
 ```
 
-### Logs bekijken
+**Database terugzetten** (in een aparte testinstantie of op een lege database):
 
 ```bash
-docker compose logs -f
+cat backup_<DATUM>.sql | sudo docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
 ```
 
-### Containers opnieuw starten
+Een restore werkt alleen als dezelfde `N8N_ENCRYPTION_KEY` gebruikt wordt als bij de back-up.
 
-```bash
-docker compose restart
-```
+## Troubleshooting
 
-### Omgeving stoppen
+| Probleem | Oplossing |
+|----------|-----------|
+| n8n toont een melding over een *secure cookie* bij `http://<JOUW_VM_IP>:5678` | n8n verwacht HTTPS, behalve op `localhost`. Gebruik een SSH-tunnel (`ssh -L 5678:localhost:5678 <gebruiker>@<JOUW_VM_IP>`) en open `http://localhost:5678`, of publiceer n8n via een reverse proxy met TLS. |
+| `sandbox-api` wordt niet `healthy` | Bekijk `sudo docker compose logs sandbox-certs sandbox-api`. Controleer of de waarden in `.env` ingevuld zijn en `N8N_SANDBOX_VERSION` bestaat. |
+| `sandbox-runner-1` start niet | Controleer dat je een VM gebruikt en geen LXC-container (Docker-in-Docker). |
+| n8n start niet na een wijziging in `.env` | Gebruik `sudo docker compose up -d` opnieuw: Compose maakt de container opnieuw aan met de nieuwe waarden. |
+| Credentials werken niet meer na een restore | De `N8N_ENCRYPTION_KEY` is niet dezelfde als bij de back-up. |
 
-```bash
-docker compose down
-```
+## Acceptatiecheck
 
-Dit verwijdert de containers en het netwerk van deze Compose-stack, maar verwijdert normaal gezien niet de volumes.
+De installatie is klaar wanneer:
 
-**Gebruik geen `docker compose down -v` tenzij je bewust ook de volumes en opgeslagen gegevens wilt verwijderen.**
-
-## Back-ups
-
-Maak regelmatig een back-up van:
-
-- De PostgreSQL-database.
-- De `.env`-configuratie.
-- De workflow-exports.
-- De configuratiebestanden van de MCP-servers.
-
-Bewaar back-ups op een veilige locatie en controleer of ze effectief teruggezet kunnen worden.
-
-## Bekende aandachtspunten
-
-- Een geïmporteerde workflow is niet automatisch klaar voor gebruik.
-- Credentials moeten na het importeren opnieuw ingesteld of gekoppeld worden.
-- IP-adressen en URL's moeten aangepast worden aan de eigen omgeving.
-- De Minecraft MCP-server en n8n moeten op een gedeeld Docker-netwerk kunnen communiceren.
-- De Proxmox MCP-server moet bereikbaar zijn vanuit n8n.
-- De Trello- en Proxmox-workflows moeten eerst getest worden voordat ze geactiveerd worden.
-- Een succesvolle Docker-start betekent niet automatisch dat alle workflows correct werken.
-- Controleer na het importeren of alle gebruikte MCP-servers beschikbaar zijn.
-
----
-
-**Repository:**
-
-https://github.com/EwoudBoutje/network-experience-2627-n8n
+- [ ] n8n bereikbaar is via `http://<JOUW_VM_IP>:5678` (of via de afgesproken TLS-route)
+- [ ] `postgres` de status `healthy` heeft
+- [ ] `sandbox-api` de status `healthy` heeft
+- [ ] er een Owner account bestaat
+- [ ] er een apart Member account bestaat
+- [ ] de encryptiesleutel veilig in de vault staat
+- [ ] echte secrets niet in GitHub staan
+- [ ] een database back-up gemaakt en getest is
